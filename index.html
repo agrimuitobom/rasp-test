@@ -1,0 +1,2729 @@
+<title>ブレッドボード配線ラボ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
+<style>
+/* Layout: 部品パレット｜作業マット（SVG）｜インスペクタ。静電気防止マットを思わせる緑灰色の作業面に、実物色の基板を置く */
+:root{
+  --bg:#e7ecea; --panel:#f8faf9; --panel2:#eef3f1; --line:#d0dad6; --fg:#16201d; --muted:#5a6964;
+  --accent:#0b6e69; --accent-ink:#ffffff; --accent-soft:#d6ebe8;
+  --mat:#cddad5; --dot:#adc0b9; --sel:#ff7a00; --hl:#00a37a;
+  --err:#c8323a; --warn:#a86f00; --info:#2a64a8; --ok:#22804e;
+  --err-bg:#fbe9ea; --warn-bg:#fbf1dc; --info-bg:#e6eef9; --ok-bg:#e3f3ea;
+  --pin-gpio:#1d7444; --pin-3v3:#b95300; --pin-5v:#c22a2a; --pin-gnd:#2b2b2b;
+  --code-bg:#fbfcfb; --code-fg:#1b2420; --code-ln:#9aa8a3; --code-gut:#eef3f1;
+  --ui:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,"Courier New",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1514; --panel:#161e1c; --panel2:#1b2523; --line:#2a3633; --fg:#e3ebe9; --muted:#93a39e;
+    --accent:#3cc0b3; --accent-ink:#04201d; --accent-soft:#163a36;
+    --mat:#18221f; --dot:#2b3a36; --sel:#ff9a3c; --hl:#38e0b0;
+    --err:#ff6f74; --warn:#f0b429; --info:#6fa9ee; --ok:#52c488;
+    --err-bg:#3a1c1e; --warn-bg:#382b10; --info-bg:#172a42; --ok-bg:#163223;
+    --pin-gpio:#62d394; --pin-3v3:#ffa94d; --pin-5v:#ff7070; --pin-gnd:#c7d0cd; --code-bg:#0f1715; --code-fg:#e3ebe9; --code-ln:#5f726c; --code-gut:#131d1b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1514; --panel:#161e1c; --panel2:#1b2523; --line:#2a3633; --fg:#e3ebe9; --muted:#93a39e;
+  --accent:#3cc0b3; --accent-ink:#04201d; --accent-soft:#163a36;
+  --mat:#18221f; --dot:#2b3a36; --sel:#ff9a3c; --hl:#38e0b0;
+  --err:#ff6f74; --warn:#f0b429; --info:#6fa9ee; --ok:#52c488;
+  --err-bg:#3a1c1e; --warn-bg:#382b10; --info-bg:#172a42; --ok-bg:#163223;
+  --pin-gpio:#62d394; --pin-3v3:#ffa94d; --pin-5v:#ff7070; --pin-gnd:#c7d0cd; --code-bg:#0f1715; --code-fg:#e3ebe9; --code-ln:#5f726c; --code-gut:#131d1b;
+  color-scheme:dark;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:14px}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{height:100%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px}
+header.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-width:0}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;min-width:0}
+.brand h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.brand h1 b{color:var(--accent)}
+.brand span{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tb{height:32px;min-width:32px;padding:0 10px;border:1px solid var(--line);background:var(--panel);border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.tb:hover{border-color:var(--accent)}
+.tb:focus-visible,.pal-item:focus-visible,.tab:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tb[disabled]{opacity:.4;cursor:default}
+.tb.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sep{width:1px;height:22px;background:var(--line);margin:0 2px}
+.swatches{display:flex;gap:4px;align-items:center;padding:0 6px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.swatches small{color:var(--muted);font-size:11px;margin-right:2px}
+.sw{width:18px;height:18px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+.sw.on{border-color:var(--fg)}
+
+.main{display:grid;grid-template-columns:200px minmax(0,1fr) 340px;gap:10px;min-height:0}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:0;min-width:0}
+.palette{overflow:auto;padding:10px}
+.pal-group{margin-bottom:12px}
+.pal-group h3{margin:4px 4px 6px;font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.pal-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;border:1px solid transparent;background:none;border-radius:8px;padding:6px;cursor:grab;touch-action:none;user-select:none}
+.pal-item:hover{background:var(--panel2);border-color:var(--line)}
+.pal-item i{flex:none;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-style:normal;font:600 9px var(--mono);color:#fff}
+.pal-item div{min-width:0}
+.pal-item b{display:block;font-size:13px;font-weight:500;line-height:1.25}
+.pal-item small{display:block;font-size:11px;color:var(--muted);line-height:1.25}
+
+.stage{position:relative;overflow:hidden;background:var(--mat)}
+#cv{display:block;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none}
+#cv.panning{cursor:grabbing}
+.hint{position:absolute;left:10px;top:10px;max-width:calc(100% - 20px);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.hint button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:14px;padding:0 2px}
+.tip{position:absolute;pointer-events:none;background:#101614;color:#f2f6f4;border-radius:6px;padding:5px 8px;font-size:12px;line-height:1.4;max-width:260px;z-index:5;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.tip b{font-family:var(--mono);font-weight:600}
+.zoomer{position:absolute;right:10px;bottom:10px;display:flex;gap:4px}
+.stepbar{position:absolute;left:10px;right:10px;bottom:10px;background:var(--panel);border:2px solid var(--accent);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.stepbar .no{font:600 13px var(--mono);color:var(--accent);white-space:nowrap}
+.stepbar .no big{display:block;font-size:26px;line-height:1;color:var(--fg)}
+.stepbar .txt{font-size:16px;font-weight:500;line-height:1.45;min-width:0}
+.stepbar .txt small{display:block;font-size:13px;color:var(--muted);font-weight:400;margin-top:3px}
+.stepbar .nav{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+
+.side{display:grid;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--line);padding:6px 6px 0;gap:2px}
+.tab{flex:1;border:0;background:none;padding:8px 4px 9px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;color:var(--muted);position:relative;white-space:nowrap}
+.tab.on{color:var(--fg);font-weight:700;background:var(--panel2)}
+.tab .bd{display:inline-block;min-width:16px;padding:0 4px;border-radius:8px;font:600 10px/16px var(--mono);color:#fff;margin-left:3px;vertical-align:1px}
+.bd.e{background:var(--err)} .bd.w{background:var(--warn)}
+.tabbody{overflow:auto;padding:14px;min-height:0;background:var(--panel2)}
+.tabbody h2{font-size:15px;margin:0 0 4px;text-wrap:balance}
+.tabbody h4{font-size:12px;letter-spacing:.08em;color:var(--muted);margin:16px 0 6px;font-weight:700}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.field{display:grid;gap:4px;margin:10px 0}
+.field label{font-size:12px;color:var(--muted)}
+.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 9px}
+textarea{resize:vertical;min-height:64px}
+textarea.code{font:12px/1.4 var(--mono);min-height:84px;word-break:break-all}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+.btn.danger{color:var(--err)}
+.btn.danger.armed{background:var(--err);color:#fff;border-color:var(--err)}
+.pinlist{display:grid;gap:4px;margin:0;padding:0;list-style:none}
+.pinlist li{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px;font-size:12.5px;padding:6px 8px;background:var(--panel);border-radius:6px;border:1px solid var(--line)}
+.pinlist li b{font-family:var(--mono);font-weight:600;font-size:12px}
+.pinlist li span{color:var(--muted);text-align:right;min-width:0}
+.res{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.res li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;line-height:1.5;cursor:pointer;border:1px solid transparent}
+.res li:hover{border-color:var(--line)}
+.res li .ic{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 11px var(--mono);margin-top:1px}
+.res .error{background:var(--err-bg)} .res .error .ic{background:var(--err)}
+.res .warn{background:var(--warn-bg)} .res .warn .ic{background:var(--warn)}
+.res .info{background:var(--info-bg)} .res .info .ic{background:var(--info)}
+.res .ok{background:var(--ok-bg)} .res .ok .ic{background:var(--ok)}
+.summary{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+.pill{font-size:12px;padding:3px 9px;border-radius:999px;font-weight:500}
+.pill.e{background:var(--err-bg);color:var(--err)} .pill.w{background:var(--warn-bg);color:var(--warn)}
+.pill.i{background:var(--info-bg);color:var(--info)} .pill.o{background:var(--ok-bg);color:var(--ok)}
+.meter{height:10px;border-radius:5px;background:var(--line);overflow:hidden;margin:6px 0}
+.meter i{display:block;height:100%;background:var(--ok)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.steps li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:12.5px;line-height:1.45}
+.steps li.on{border-color:var(--sel);box-shadow:0 0 0 1px var(--sel)}
+.steps li .n{font:600 13px var(--mono);color:var(--accent);text-align:center;padding-top:1px}
+.steps li .nt{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.steps li .mv{display:flex;flex-direction:column;gap:2px}
+.steps li .mv button{border:1px solid var(--line);background:var(--panel2);border-radius:4px;width:24px;height:20px;cursor:pointer;font-size:10px;line-height:1;padding:0}
+.help{margin:0;padding-left:18px;display:grid;gap:5px;font-size:12.5px;line-height:1.5}
+kbd{font:600 11px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--panel)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:50}
+.cmp-row{font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:8px;background:var(--panel);border:1px solid var(--line);margin-bottom:6px}
+.cmp-row b{font-weight:700}
+.cmp-row .tag{font-family:var(--mono);font-size:11.5px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px;margin:1px 2px;display:inline-block}
+
+/* SVG */
+#cv .mat{fill:url(#dots)}
+#cv .dotc{fill:var(--dot)}
+.slk{font:600 7.5px var(--mono);fill:#fff}
+.bbtxt{font:500 9px var(--mono);fill:#8d897e}
+.bbsym{font:700 14px var(--mono)}
+.pilab{font:600 8.5px var(--mono)}
+.pilab.out.nc{fill:var(--muted)} .pilab.out.gpio{fill:var(--pin-gpio)} .pilab.out.v33{fill:var(--pin-3v3)} .pilab.out.v5{fill:var(--pin-5v)} .pilab.out.gnd{fill:var(--pin-gnd)}
+.pilab.in{fill:#eaf7ef} .pilab.in.v5{fill:#ffc2c2} .pilab.in.v33{fill:#ffd9a8} .pilab.in.gnd{fill:#b9c9c0}
+.pinno{font:700 10px var(--mono);fill:var(--muted)}
+#cv.nolabels .pilab,#cv.nolabels .pinno{display:none}
+.tagtxt{font:700 10px var(--mono);fill:#333}
+.part{cursor:move}
+.part .pm{fill:none;stroke:var(--hl);stroke-width:1.5;opacity:0;pointer-events:none}
+.part:hover .pm{opacity:.9}
+.part.sel{filter:drop-shadow(0 0 2px var(--sel)) drop-shadow(0 0 5px var(--sel))}
+.part.flash,.wire.flash{animation:flash 1.4s ease-in-out 2}
+@keyframes flash{50%{filter:drop-shadow(0 0 3px var(--err)) drop-shadow(0 0 8px var(--err))}}
+.wire{cursor:pointer}
+.wire .hit{stroke:transparent;stroke-width:14;fill:none}
+.wire .ol{fill:none;stroke-linecap:round;stroke:rgba(0,0,0,.45)}
+.wire .core{fill:none;stroke-linecap:round}
+.wire .shine{fill:none;stroke:rgba(255,255,255,.35);stroke-linecap:round;pointer-events:none}
+.wire.sel .ol{stroke:var(--sel)}
+.wire.hlw .ol{stroke:var(--hl)}
+.wend{fill:#b8bec3;stroke:#5d646a;stroke-width:1.5;cursor:grab}
+.wire.sel .wend{stroke:var(--sel);stroke-width:2.5}
+.hlring{fill:none;stroke:var(--hl);stroke-width:2.5}
+.hlfill{fill:var(--hl);opacity:.25}
+.preview{fill:none;stroke-width:5;stroke-linecap:round;opacity:.85;stroke-dasharray:8 5;pointer-events:none}
+.stepping .fut{display:none}
+.stepping .past{opacity:.45}
+.stepping .cur{filter:drop-shadow(0 0 3px var(--sel)) drop-shadow(0 0 7px var(--sel));animation:pulse 1.6s ease-in-out infinite}
+.stepping .wend{cursor:default}
+@keyframes pulse{50%{filter:drop-shadow(0 0 1px var(--sel)) drop-shadow(0 0 3px var(--sel))}}
+@media (prefers-reduced-motion: reduce){.stepping .cur,.part.flash,.wire.flash{animation:none}}
+
+.fx{pointer-events:none}
+.bub.ok{fill:#1d7444} .bub.ng{fill:#69736f} .bub.tap{fill:var(--accent)}
+.bubt{font:700 12px var(--ui);fill:#fff}
+.lcdt{font:600 34px var(--mono);fill:#eef4ff}
+.oledt{font:600 18px var(--mono);fill:#9fe3ff}
+.pibadge{font:700 10px var(--mono);fill:#fff}
+.ringfx{animation:ringfx .45s ease-in-out infinite}
+@keyframes ringfx{50%{opacity:.25}}
+#cv.running .part{cursor:default}
+#cv.running .part[data-type="button"]{cursor:pointer}
+#cv.running .wire,#cv.running .wend{cursor:default}
+.tb.run{background:var(--ok);color:#fff;border-color:var(--ok);font-weight:700}
+.tb.run.on{background:var(--err);border-color:var(--err)}
+.gpio{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;display:grid;gap:6px}
+.gpio select{width:100%;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:6px 8px}
+.gh{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+.gh b{font:600 13px var(--mono)}
+.gd{font-size:12px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lvl{font:700 11px var(--mono);padding:2px 7px;border-radius:999px;color:#fff;background:#8a8f93;white-space:nowrap}
+.lvl.hi{background:#d6363b} .lvl.lo{background:#2f62c9} .lvl.pwm{background:#8e44ad} .lvl.err{background:#ff2a2a}
+.rng{display:grid;grid-template-columns:4.5em minmax(0,1fr) 4.8em;gap:8px;align-items:center;font-size:12.5px;margin:6px 0}
+.gpio .rng{grid-template-columns:minmax(0,1fr) 3.5em}
+.rng span{font:600 12px var(--mono);text-align:right}
+.rng input{width:100%;accent-color:var(--accent)}
+.ra{font-size:12.5px;line-height:1.5;padding:7px 10px;border-radius:8px;margin-top:6px}
+.ra.error{background:var(--err-bg);color:var(--err);font-weight:700} .ra.warn{background:var(--warn-bg);color:var(--warn)} .ra.info{background:var(--info-bg);color:var(--info)}
+.main.wide{grid-template-columns:200px minmax(0,1fr) 460px}
+.seg{display:flex;gap:2px;background:var(--line);padding:3px;border-radius:9px;margin:8px 0 10px}
+.seg button{flex:1;border:0;background:none;border-radius:7px;padding:7px 6px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--panel);color:var(--fg);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.codebar{display:flex;gap:6px;align-items:center;margin:8px 0;flex-wrap:wrap}
+.codebar select{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:7px 8px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:default}
+.editor{display:grid;grid-template-columns:auto minmax(0,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--code-bg);height:300px}
+.editor .ln{font:12.5px/1.6 var(--mono);color:var(--code-ln);text-align:right;padding:10px 8px 10px 10px;overflow:hidden;user-select:none;background:var(--code-gut);min-width:2.6em}
+.editor .ln span{display:block}
+.editor .ln span.e{color:#fff;background:var(--err);border-radius:3px}
+.editor textarea{border:0;outline:none;resize:none;background:transparent;color:var(--code-fg);font:12.5px/1.6 var(--mono);padding:10px;white-space:pre;overflow:auto;min-height:0;height:100%;tab-size:4}
+.editor:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.console{font:12px/1.55 var(--mono);background:#0e1513;color:#d6e4df;border-radius:10px;padding:8px 10px;height:150px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.console .sys{color:#7fb8a8} .console .err{color:#ff8a8f} .console .hint{color:#ffd27a} .console .warn{color:#ffd27a}
+@media (max-width: 1000px){
+  html,body{height:auto}
+  .app{height:auto;min-height:100%}
+  .main,.main.wide{grid-template-columns:minmax(0,1fr);grid-template-rows:auto 62vh auto}
+  .palette{display:flex;gap:8px;overflow-x:auto;padding:8px}
+  .pal-group{display:flex;gap:4px;margin:0;flex:none;align-items:stretch}
+  .pal-group h3{writing-mode:vertical-rl;margin:0 2px;font-size:10px}
+  .pal-item{width:auto;flex:none}
+  .pal-item small{display:none}
+  .side{max-height:none}
+  .tabbody{max-height:none}
+  .stepbar{grid-template-columns:minmax(0,1fr);}
+  .stepbar .nav{justify-content:flex-start}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>配線<b>ラボ</b></h1><span>Raspberry Pi × ブレッドボード</span></div>
+    <div class="tools" id="tools">
+      <button class="tb" id="bUndo" title="元に戻す（Ctrl+Z）" aria-label="元に戻す">↶</button>
+      <button class="tb" id="bRedo" title="やり直す（Ctrl+Y）" aria-label="やり直す">↷</button>
+      <span class="sep"></span>
+      <button class="tb" id="bRot" title="回転（R）">回転</button>
+      <button class="tb" id="bDel" title="削除（Delete）">削除</button>
+      <span class="sep"></span>
+      <div class="swatches" id="swatches" title="新しいジャンパ線の色"><small>線の色</small></div>
+      <button class="tb on" id="bLabels" title="ラズパイのピン名を表示">ピン名</button>
+      <button class="tb" id="bSteps" title="手順モード">手順モード</button>
+      <button class="tb run" id="bRun" title="回路を動かしてみる">▶ 動かす</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <nav class="pane palette" id="palette" aria-label="部品"></nav>
+
+    <section class="pane stage" id="stage">
+      <svg id="cv" xmlns="http://www.w3.org/2000/svg" aria-label="配線図">
+        <defs>
+          <filter id="glowf" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="7"/></filter>
+          <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle class="dotc" cx="0" cy="0" r="1.3"/><circle class="dotc" cx="20" cy="0" r="1.3"/><circle class="dotc" cx="0" cy="20" r="1.3"/><circle class="dotc" cx="20" cy="20" r="1.3"/></pattern>
+        </defs>
+        <g id="vp">
+          <rect class="mat" x="-20000" y="-20000" width="40000" height="40000"/>
+          <g id="lyBoards"></g>
+          <g id="lyParts"></g>
+          <g id="lyWires"></g>
+          <g id="lyOver" style="pointer-events:none"></g>
+        </g>
+      </svg>
+      <div class="hint" id="hint"><span>穴やピンにマウスを重ねると、電気的につながっている場所が光ります。穴からドラッグするとジャンパ線を引けます。</span><button id="hintX" aria-label="閉じる">×</button></div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="zoomer" id="zoomer">
+        <button class="tb" id="bZoomOut" aria-label="縮小">−</button>
+        <button class="tb" id="bFit">全体</button>
+        <button class="tb" id="bZoomIn" aria-label="拡大">＋</button>
+      </div>
+      <div class="stepbar" id="stepbar" hidden>
+        <div class="no"><big id="sbNo">1</big><span id="sbOf">/ 10</span></div>
+        <div class="txt" id="sbTxt"></div>
+        <div class="nav">
+          <button class="btn" id="sbPrev">◀ 前へ</button>
+          <button class="btn pri" id="sbNext">次へ ▶</button>
+          <button class="btn" id="sbExit">終わる</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="pane side">
+      <div class="tabs" id="tabsBar" role="tablist">
+        <button class="tab on" data-tab="insp" role="tab">部品</button>
+        <button class="tab" data-tab="check" role="tab">チェック<span id="badge"></span></button>
+        <button class="tab" data-tab="steps" role="tab">手順</button>
+        <button class="tab" data-tab="share" role="tab">保存・共有</button>
+      </div>
+      <div class="tabbody" id="tb-insp"></div>
+      <div class="tabbody" id="tb-check" hidden></div>
+      <div class="tabbody" id="tb-steps" hidden></div>
+      <div class="tabbody" id="tb-share" hidden></div>
+      <div class="tabbody" id="runPanel" hidden></div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+const P = 20; // 0.1インチ = 20px
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const K = (x,y) => x + ',' + y;
+function rotXY(dx,dy,r){ switch(((r%4)+4)%4){case 0:return [dx,dy];case 1:return [-dy,dx];case 2:return [-dx,-dy];default:return [dy,-dx];} }
+
+/* ===================== ラズパイのピン ===================== */
+const PI_NAMES = {1:'3V3',2:'5V',3:'GPIO2',4:'5V',5:'GPIO3',6:'GND',7:'GPIO4',8:'GPIO14',9:'GND',10:'GPIO15',11:'GPIO17',12:'GPIO18',13:'GPIO27',14:'GND',15:'GPIO22',16:'GPIO23',17:'3V3',18:'GPIO24',19:'GPIO10',20:'GND',21:'GPIO9',22:'GPIO25',23:'GPIO11',24:'GPIO8',25:'GND',26:'GPIO7',27:'GPIO0',28:'GPIO1',29:'GPIO5',30:'GND',31:'GPIO6',32:'GPIO12',33:'GPIO13',34:'GND',35:'GPIO19',36:'GPIO16',37:'GPIO26',38:'GPIO20',39:'GND',40:'GPIO21'};
+const GPIO_ALT = {2:'SDA',3:'SCL',4:'1-Wire',14:'TXD',15:'RXD',18:'PWM0',12:'PWM0',13:'PWM1',19:'PWM1',10:'MOSI',9:'MISO',11:'SCLK',8:'CE0',7:'CE1',0:'ID_SD',1:'ID_SC'};
+const PI_PINS = [];
+for (let n=1;n<=40;n++){
+  const name = PI_NAMES[n];
+  const role = name==='3V3'?'3v3':name==='5V'?'5v':name==='GND'?'gnd':'gpio';
+  const gpio = role==='gpio'? +name.slice(4) : null;
+  const alt = gpio!==null && GPIO_ALT[gpio] ? GPIO_ALT[gpio] : '';
+  const disp = role==='3v3'?'3.3V':name;
+  PI_PINS.push({x:Math.floor((n-1)/2), y:n%2?1:0, num:n, name:disp, role, gpio, alt,
+    label:`${n}番ピン（${disp}${alt?'・'+alt:''}）`});
+}
+const PIN_CLS = {gpio:'gpio','3v3':'v33','5v':'v5',gnd:'gnd',nc:'nc'};
+const PIN_COL = {gpio:'#2fa865','3v3':'#f08a1c','5v':'#e53935',gnd:'#111',nc:'#8a8f93'};
+const PICO_NAMES = {1:'GP0',2:'GP1',3:'GND',4:'GP2',5:'GP3',6:'GP4',7:'GP5',8:'GND',9:'GP6',10:'GP7',11:'GP8',12:'GP9',13:'GND',14:'GP10',15:'GP11',16:'GP12',17:'GP13',18:'GND',19:'GP14',20:'GP15',21:'GP16',22:'GP17',23:'GND',24:'GP18',25:'GP19',26:'GP20',27:'GP21',28:'GND',29:'GP22',30:'RUN',31:'GP26',32:'GP27',33:'GND',34:'GP28',35:'ADC_VREF',36:'3V3(OUT)',37:'3V3_EN',38:'GND',39:'VSYS',40:'VBUS'};
+const PICO_PINS = [];
+for (let n=1;n<=40;n++){
+  const name=PICO_NAMES[n];
+  const role = name==='GND'?'gnd': name==='3V3(OUT)'?'3v3': (name==='VSYS'||name==='VBUS')?'5v': name.startsWith('GP')?'gpio':'nc';
+  const gpio = role==='gpio'? +name.slice(2) : null;
+  const alt = gpio===26?'ADC0':gpio===27?'ADC1':gpio===28?'ADC2':'';
+  PICO_PINS.push({x:n<=20?n-1:40-n, y:n<=20?7:0, num:n, name, role, gpio, alt, label:`${n}番ピン（${name}${alt?'・'+alt:''}）`});
+}
+function picoDraw(){
+  let s=`<rect x="-44" y="52" width="40" height="36" rx="4" fill="#c4c9cd" stroke="#8a9096"/>`;
+  s+=`<rect x="-14" y="-14" width="408" height="168" rx="10" fill="#1e7d3c" stroke="#135a2a" stroke-width="2"/>`;
+  s+=`<rect x="300" y="18" width="78" height="104" rx="4" fill="#c8cdd1" stroke="#8a9096"/><text x="339" y="74" text-anchor="middle" style="font:700 12px var(--mono)" fill="#5c6267">Pico W</text>`;
+  s+=`<rect x="150" y="45" width="54" height="54" rx="3" fill="#1d1d1d"/><text x="177" y="76" text-anchor="middle" style="font:600 8px var(--mono)" fill="#9aa">RP2040</text>`;
+  s+=`<circle cx="70" cy="40" r="11" fill="#f4f4f4" stroke="#aaa"/><text x="70" y="62" text-anchor="middle" class="slk" style="font-size:6.5px">BOOTSEL</text>`;
+  s+=`<rect x="10" y="26" width="12" height="7" rx="1" fill="#9be7a8"/><text x="16" y="44" text-anchor="middle" class="slk" style="font-size:6.5px">LED</text>`;
+  s+=`<text x="100" y="118" fill="#e9f6ee" style="font:700 15px var(--ui)">Raspberry Pi Pico W</text>`;
+  for (const q of PICO_PINS){
+    const cx=q.x*P, cy=q.y*P;
+    s+=`<circle cx="${cx}" cy="${cy}" r="7" fill="#1e7d3c" stroke="${PIN_COL[q.role]}" stroke-width="2.6"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="#e0bf55"/>`;
+    const lab = q.alt ? `${q.name} ${q.alt.replace('ADC','A')}` : q.name.replace('(OUT)','');
+    if (q.y===0) s+=`<text class="pilab out ${PIN_CLS[q.role]}" transform="translate(${cx+3} -16) rotate(-90)">${lab}</text>`;
+    else s+=`<text class="pilab out ${PIN_CLS[q.role]}" text-anchor="end" transform="translate(${cx+3} 156) rotate(-90)">${lab}</text>`;
+  }
+  s+=`<text class="pinno" x="-22" y="144" text-anchor="end">1</text><text class="pinno" x="-22" y="4" text-anchor="end">40</text><text class="pinno" x="396" y="144">20</text><text class="pinno" x="396" y="4">21</text>`;
+  return s;
+}
+
+/* ===================== ブレッドボード ===================== */
+const BB_CACHE = {};
+function bbLayout(cols){
+  if (BB_CACHE[cols]) return BB_CACHE[cols];
+  const holes = [];
+  for (let x=0;x<cols;x++){
+    for (let r=0;r<5;r++) holes.push({x, y:3+r, strip:'T'+x, name:`${x+1}${'abcde'[r]}`, desc:`${x+1}列の a〜e とつながっています`});
+    for (let r=0;r<5;r++) holes.push({x, y:10+r, strip:'B'+x, name:`${x+1}${'fghij'[r]}`, desc:`${x+1}列の f〜j とつながっています`});
+  }
+  const groups = cols>=60?10:5;
+  for (let g=0;g<groups;g++) for (let i=0;i<5;i++){
+    const x = 1+g*6+i;
+    holes.push({x,y:0,strip:'RT-',name:`上の−ライン（${x+1}列あたり）`,desc:'上の−ライン：横一列すべてつながっています'});
+    holes.push({x,y:1,strip:'RT+',name:`上の＋ライン（${x+1}列あたり）`,desc:'上の＋ライン：横一列すべてつながっています'});
+    holes.push({x,y:16,strip:'RB+',name:`下の＋ライン（${x+1}列あたり）`,desc:'下の＋ライン：横一列すべてつながっています'});
+    holes.push({x,y:17,strip:'RB-',name:`下の−ライン（${x+1}列あたり）`,desc:'下の−ライン：横一列すべてつながっています'});
+  }
+  return BB_CACHE[cols] = holes;
+}
+function bbDraw(cols){
+  const W=(cols-1)*P;
+  let s = `<rect x="-30" y="-30" width="${W+60}" height="400" rx="10" fill="#f5f4f0" stroke="#cbc8bd" stroke-width="1.5"/>`;
+  s += `<rect x="-30" y="160" width="${W+60}" height="20" fill="#e2dfd6"/>`;
+  s += `<line x1="-30" y1="45" x2="${W+30}" y2="45" stroke="#e2dfd6" stroke-width="2"/><line x1="-30" y1="295" x2="${W+30}" y2="295" stroke="#e2dfd6" stroke-width="2"/>`;
+  s += `<line x1="0" y1="-12" x2="${W}" y2="-12" stroke="#2f62c9" stroke-width="2"/><line x1="0" y1="32" x2="${W}" y2="32" stroke="#d0312d" stroke-width="2"/>`;
+  s += `<line x1="0" y1="308" x2="${W}" y2="308" stroke="#d0312d" stroke-width="2"/><line x1="0" y1="352" x2="${W}" y2="352" stroke="#2f62c9" stroke-width="2"/>`;
+  for (const xx of [-17, W+17]){
+    s += `<text class="bbsym" x="${xx}" y="5" text-anchor="middle" fill="#2f62c9">−</text><text class="bbsym" x="${xx}" y="25" text-anchor="middle" fill="#d0312d">+</text>`;
+    s += `<text class="bbsym" x="${xx}" y="325" text-anchor="middle" fill="#d0312d">+</text><text class="bbsym" x="${xx}" y="345" text-anchor="middle" fill="#2f62c9">−</text>`;
+  }
+  for (let c=1;c<=cols;c++) if (c===1||c%5===0){
+    s += `<text class="bbtxt" x="${(c-1)*P}" y="50" text-anchor="middle">${c}</text><text class="bbtxt" x="${(c-1)*P}" y="298" text-anchor="middle">${c}</text>`;
+  }
+  'abcde'.split('').forEach((l,i)=>{ s+=`<text class="bbtxt" x="-17" y="${(3+i)*P+3}" text-anchor="middle">${l}</text><text class="bbtxt" x="${W+17}" y="${(3+i)*P+3}" text-anchor="middle">${l}</text>`; });
+  'fghij'.split('').forEach((l,i)=>{ s+=`<text class="bbtxt" x="-17" y="${(10+i)*P+3}" text-anchor="middle">${l}</text><text class="bbtxt" x="${W+17}" y="${(10+i)*P+3}" text-anchor="middle">${l}</text>`; });
+  let d='';
+  for (const h of bbLayout(cols)) d += `M${h.x*P-4} ${h.y*P-4}h8v8h-8z`;
+  s += `<path d="${d}" fill="#34332f"/>`;
+  return s;
+}
+
+/* ===================== ラズパイ本体 ===================== */
+function piDraw(){
+  let s = `<rect x="-64" y="-18" width="669" height="441" rx="22" fill="#1f7a46" stroke="#135a31" stroke-width="2"/>`;
+  for (const [hx,hy] of [[-36,10],[421,10],[-36,396],[421,396]]) s += `<circle cx="${hx}" cy="${hy}" r="13" fill="#d4b553"/><circle cx="${hx}" cy="${hy}" r="7.5" fill="#0d3a22"/>`;
+  s += `<rect x="512" y="30" width="118" height="100" rx="4" fill="#c4c9cd" stroke="#8a9096"/><rect x="512" y="150" width="118" height="100" rx="4" fill="#c4c9cd" stroke="#8a9096"/><rect x="505" y="272" width="125" height="122" rx="4" fill="#c4c9cd" stroke="#8a9096"/>`;
+  s += `<rect x="530" y="50" width="88" height="22" fill="#1e5fd0"/><rect x="530" y="88" width="88" height="22" fill="#1e5fd0"/><rect x="530" y="170" width="88" height="22" fill="#2b2b2b"/><rect x="530" y="208" width="88" height="22" fill="#2b2b2b"/>`;
+  s += `<rect x="190" y="150" width="120" height="120" rx="6" fill="#b9bec3" stroke="#7f868c"/><rect x="330" y="170" width="70" height="80" rx="3" fill="#1d1d1d"/>`;
+  s += `<rect x="20" y="398" width="58" height="34" rx="4" fill="#bfc4c8"/><rect x="110" y="402" width="48" height="30" rx="3" fill="#bfc4c8"/><rect x="190" y="402" width="48" height="30" rx="3" fill="#bfc4c8"/>`;
+  s += `<text x="20" y="330" fill="#eaf6ef" style="font:700 30px var(--ui)">Raspberry Pi</text><text x="22" y="358" fill="#b7dcc6" style="font:500 14px var(--mono)">40ピン GPIO（Pi 4 / Pi 5）</text>`;
+  s += `<rect x="-14" y="-12" width="408" height="44" rx="3" fill="#161616"/>`;
+  for (const q of PI_PINS){
+    const cx=q.x*P, cy=q.y*P;
+    s += `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="${PIN_COL[q.role]}" stroke-width="2.6"/><rect x="${cx-3.5}" y="${cy-3.5}" width="7" height="7" fill="#e0bf55"/>`;
+    const lab = q.role==='gpio' ? (q.alt && [2,3].includes(q.gpio) ? `G${q.gpio} ${q.alt}` : 'GPIO'+q.gpio) : q.name;
+    if (q.y===0) s += `<text class="pilab out ${PIN_CLS[q.role]}" transform="translate(${cx+3} -16) rotate(-90)">${lab}</text>`;
+    else s += `<text class="pilab in ${PIN_CLS[q.role]}" text-anchor="end" transform="translate(${cx+3} 38) rotate(-90)">${lab}</text>`;
+  }
+  s += `<text class="pinno" x="-22" y="24" text-anchor="end">1</text><text class="pinno" x="-22" y="4" text-anchor="end">2</text><text class="pinno" x="396" y="24">39</text><text class="pinno" x="396" y="4">40</text>`;
+  return s;
+}
+
+/* ===================== 部品 ===================== */
+const LED_COLORS = {red:{l:'赤',c:'#e53935'},green:{l:'緑',c:'#43a047'},yellow:{l:'黄',c:'#fdd835'},blue:{l:'青',c:'#1e88e5'},white:{l:'白',c:'#f1f1ee'}};
+const R_VALUES = [100,220,330,470,1000,2200,4700,10000];
+const BAND = ['#1a1a1a','#7a4a1e','#d0312d','#ef7d1a','#f2d11a','#2e8b3e','#2f62c9','#7b3fb5','#8a8a8a','#f4f4f4'];
+const fmtOhm = v => v>=1000 ? (v/1000)+'kΩ' : v+'Ω';
+function bands(v){ const s=String(v); return [ +s[0], +s[1], s.length-2 ]; }
+
+function headerSVG(names, tag){
+  const w=(names.length-1)*P; let s='';
+  if (tag) s += `<rect x="-10" y="-27" width="${w+20}" height="17" rx="3" fill="#2a2a2a"/>`;
+  s += `<rect x="-9" y="-8" width="${w+18}" height="16" rx="2" fill="#151515"/>`;
+  names.forEach((nm,i)=>{ s += `<rect x="${i*P-3.5}" y="-3.5" width="7" height="7" fill="#d9b54a"/><text x="${i*P}" y="-15" class="slk" text-anchor="middle">${esc(nm)}</text>`; });
+  return s;
+}
+function modType(o){
+  return Object.assign({
+    pins: () => o.pinDefs.map((p,i)=>({x:i,y:0,name:p[0],role:p[1],label:p[2]||p[0]})),
+    bbox: () => o.box,
+    draw: () => {
+      let s='';
+      if (o.pcb){ const [x0,y0,x1] = o.box; s += `<rect x="${x0}" y="${y0}" width="${x1-x0}" height="${-6-y0}" rx="6" fill="${o.pcb}" stroke="rgba(0,0,0,.35)"/>`; }
+      s += o.art();
+      s += headerSVG(o.pinDefs.map(p=>p[0]), !o.pcb);
+      return s;
+    }
+  }, o);
+}
+
+const TYPES = {
+  pi: { name:'Raspberry Pi', sub:'40ピンGPIO・Pi 4/5', cat:'board', board:true, mcu:true, chip:'#1f7a46', icon:'Pi',
+    pins: () => PI_PINS, bbox: () => [-64,-75,605,423], draw: piDraw },
+  pico: { name:'Raspberry Pi Pico W', sub:'MicroPython・ブレッドボードにさせる', cat:'board', mcu:true, chip:'#1e7d3c', icon:'Pico',
+    pins: () => PICO_PINS, bbox: () => [-46,-62,404,206], draw: picoDraw },
+  bb830: { name:'ブレッドボード', sub:'フルサイズ 830穴', cat:'board', board:true, bb:true, cols:63, chip:'#cfcbbf', icon:'830',
+    pins: () => [], bbox: () => [-30,-30,62*P+30,370], draw: () => bbDraw(63) },
+  bb400: { name:'ブレッドボード（ハーフ）', sub:'400穴', cat:'board', board:true, bb:true, cols:30, chip:'#cfcbbf', icon:'400',
+    pins: () => [], bbox: () => [-30,-30,29*P+30,370], draw: () => bbDraw(30) },
+
+  resistor: { name:'抵抗', sub:'カラーコードつき', cat:'basic', chip:'#c9a76b', icon:'R',
+    props:[{k:'ohm',l:'抵抗値',opts:R_VALUES.map(v=>({v,l:fmtOhm(v)}))}], defaults:{ohm:220},
+    pins: () => [{x:0,y:0,name:'端子1',role:'r',label:'片方の足'},{x:4,y:0,name:'端子2',role:'r',label:'もう片方の足'}],
+    bbox: () => [-4,-10,84,10],
+    draw: (pr) => {
+      const b = bands(pr.ohm);
+      let s = `<line x1="0" y1="0" x2="80" y2="0" stroke="#9aa0a6" stroke-width="2.6"/>`;
+      s += `<path d="M18 -6.5 Q16 -8 22 -8 L58 -8 Q64 -8 62 -6.5 L62 6.5 Q64 8 58 8 L22 8 Q16 8 18 6.5 Z" fill="#e3c896" stroke="#b39a68"/>`;
+      s += `<rect x="24" y="-8" width="4" height="16" fill="${BAND[b[0]]}"/><rect x="32" y="-8" width="4" height="16" fill="${BAND[b[1]]}"/><rect x="40" y="-8" width="4" height="16" fill="${BAND[b[2]]}"/><rect x="53" y="-8" width="4" height="16" fill="#c9a227"/>`;
+      return s;
+    } },
+  led: { name:'LED', sub:'発光ダイオード', cat:'basic', chip:'#e53935', icon:'LED',
+    props:[{k:'color',l:'色',opts:Object.entries(LED_COLORS).map(([v,o])=>({v,l:o.l}))}], defaults:{color:'red'},
+    pins: () => [{x:0,y:0,name:'＋',role:'a',label:'長い足（＋・アノード）'},{x:1,y:0,name:'−',role:'k',label:'短い足（−・カソード）'}],
+    bbox: () => [-12,-56,30,6],
+    draw: (pr) => {
+      const c = LED_COLORS[pr.color]?.c || '#e53935';
+      let s = `<path d="M0 0 L0 -9 L5 -15 L5 -24" fill="none" stroke="#9aa0a6" stroke-width="2.4"/><path d="M20 0 L20 -24" fill="none" stroke="#9aa0a6" stroke-width="2.4"/>`;
+      s += `<path d="M-2 -24 L-2 -42 A12 12 0 0 1 22 -42 L22 -24 Z" fill="${c}" fill-opacity=".9" stroke="rgba(0,0,0,.35)"/>`;
+      s += `<path d="M-5 -27 L23 -27 L23 -22 L-5 -22 Z" fill="${c}" stroke="rgba(0,0,0,.35)"/>`;
+      s += `<ellipse cx="4" cy="-40" rx="3" ry="6" fill="#fff" opacity=".5"/>`;
+      s += `<text class="tagtxt" x="-9" y="-3" text-anchor="middle">+</text>`;
+      return s;
+    } },
+  button: { name:'タクトスイッチ', sub:'押しボタン', cat:'basic', chip:'#333', icon:'SW',
+    links: [[0,2],[1,3]],
+    pins: () => [{x:0,y:0,name:'端子1',role:'sw',label:'左上の足'},{x:2,y:0,name:'端子2',role:'sw',label:'右上の足'},{x:0,y:3,name:'端子3',role:'sw',label:'左下の足'},{x:2,y:3,name:'端子4',role:'sw',label:'右下の足'}],
+    bbox: () => [-6,-4,46,64],
+    draw: () => {
+      let s = '';
+      for (const [x,y,x2,y2] of [[0,0,3,8],[40,0,37,8],[0,60,3,52],[40,60,37,52]]) s += `<line x1="${x}" y1="${y}" x2="${x2}" y2="${y2}" stroke="#9aa0a6" stroke-width="3"/>`;
+      s += `<rect x="-4" y="6" width="48" height="48" rx="4" fill="#2b2b2b" stroke="#111"/><circle cx="20" cy="30" r="14" fill="#141414" stroke="#555" stroke-width="2"/>`;
+      s += `<line x1="2" y1="12" x2="2" y2="48" stroke="#7fb4ff" stroke-width="1.6" stroke-dasharray="3 3"/><line x1="38" y1="12" x2="38" y2="48" stroke="#7fb4ff" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+      return s;
+    } },
+  buzzer: { name:'ブザー', sub:'アクティブブザー', cat:'basic', chip:'#222', icon:'BZ',
+    pins: () => [{x:0,y:0,name:'＋',role:'bz+',label:'＋（長い足）'},{x:3,y:0,name:'−',role:'bz-',label:'−（短い足）'}],
+    bbox: () => [2,-28,58,28],
+    draw: () => `<circle cx="30" cy="0" r="27" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="2"/><circle cx="30" cy="0" r="6" fill="#050505"/><text x="10" y="-10" text-anchor="middle" style="font:700 13px var(--mono)" fill="#ddd">+</text>` },
+
+  dht22: modType({ name:'DHT22 温湿度センサー', sub:'モジュール 3ピン', cat:'sensor', chip:'#2b5fae', icon:'DHT',
+    pinDefs:[['+','vcc','＋（VCC）'],['OUT','dout','OUT（信号）'],['−','gnd','−（GND）']], box:[-18,-98,58,10], pcb:'#1f4f9a',
+    art: () => { let s=`<rect x="-9" y="-92" width="58" height="58" rx="4" fill="#f1f1ec" stroke="#c9c9c0"/>`; for(let r=0;r<4;r++)for(let c=0;c<4;c++) s+=`<rect x="${-1+c*12}" y="${-85+r*12}" width="7" height="5" rx="1" fill="#a9b0ad"/>`; s+=`<text x="20" y="-25" class="slk" text-anchor="middle" style="font-size:8px">DHT22</text>`; return s; } }),
+  soil: modType({ name:'土壌水分センサー', sub:'静電容量式 v1.2', cat:'sensor', chip:'#1c1c1c', icon:'SOIL',
+    pinDefs:[['AOUT','aout','AOUT（アナログ出力）'],['VCC','vcc'],['GND','gnd']], box:[-18,-232,58,10], pcb:'#1c1c1c',
+    art: () => `<path d="M-18 -200 L20 -244 L58 -200 Z" fill="#1c1c1c"/><rect x="-10" y="-200" width="60" height="120" fill="#2b2b2b"/><line x1="-10" y1="-80" x2="50" y2="-80" stroke="#eee" stroke-dasharray="4 3"/><text x="20" y="-70" class="slk" text-anchor="middle">ここまで土へ</text><rect x="8" y="-58" width="24" height="18" fill="#000" stroke="#444"/><text x="20" y="-30" class="slk" text-anchor="middle">v1.2</text>` }),
+  bh1750: modType({ name:'BH1750 照度センサー', sub:'I2C（GY-302）', cat:'sensor', chip:'#1f4f9a', icon:'LUX',
+    pinDefs:[['VCC','vcc'],['GND','gnd'],['SCL','scl'],['SDA','sda'],['ADDR','nc','ADDR（つながなくてよい）']], box:[-18,-82,98,10], pcb:'#1f4f9a',
+    art: () => `<rect x="28" y="-66" width="24" height="16" fill="#111"/><circle cx="-6" cy="-70" r="5" fill="#0d2f63" stroke="#d4b553" stroke-width="2"/><circle cx="86" cy="-70" r="5" fill="#0d2f63" stroke="#d4b553" stroke-width="2"/><text x="40" y="-34" class="slk" text-anchor="middle">BH1750</text>` }),
+  ds18b20: modType({ name:'DS18B20 水温センサー', sub:'防水プローブ', cat:'sensor', chip:'#9aa3aa', icon:'TMP',
+    pinDefs:[['VCC','vcc','VCC（赤い線）'],['DATA','onewire','DATA（黄色い線）'],['GND','gnd','GND（黒い線）']], box:[-12,-216,52,10], pcb:null,
+    art: () => `<path d="M0 -27 C0 -60 20 -60 20 -96" fill="none" stroke="#d32f2f" stroke-width="4"/><path d="M20 -27 L20 -96" fill="none" stroke="#f2c200" stroke-width="4"/><path d="M40 -27 C40 -60 20 -60 20 -96" fill="none" stroke="#222" stroke-width="4"/><rect x="12" y="-150" width="16" height="58" rx="5" fill="#2a2a2a"/><rect x="8" y="-214" width="24" height="68" rx="12" fill="#c7ccd1" stroke="#8a9096"/>` }),
+  hcsr04: modType({ name:'HC-SR04 超音波センサー', sub:'距離をはかる', cat:'sensor', chip:'#1d58b0', icon:'HC',
+    pinDefs:[['VCC','vcc5','VCC（5V）'],['Trig','din','Trig（送信）'],['Echo','echo','Echo（受信・5Vで出力）'],['GND','gnd']], box:[-150,-104,210,10], pcb:'#1d58b0',
+    art: () => `<circle cx="-72" cy="-52" r="42" fill="#d2d7db" stroke="#8b9399" stroke-width="3"/><circle cx="-72" cy="-52" r="31" fill="#2f353a"/><circle cx="132" cy="-52" r="42" fill="#d2d7db" stroke="#8b9399" stroke-width="3"/><circle cx="132" cy="-52" r="31" fill="#2f353a"/><rect x="12" y="-90" width="36" height="14" rx="7" fill="#c8ccd0"/><text x="30" y="-46" class="slk" text-anchor="middle" style="font-size:10px">HC-SR04</text><text x="-72" y="-48" class="slk" text-anchor="middle">T</text><text x="132" y="-48" class="slk" text-anchor="middle">R</text>` }),
+
+  relay: modType({ name:'リレーモジュール', sub:'1ch・ポンプなどの電源を切替', cat:'output', chip:'#1e6fd9', icon:'RLY',
+    props:[{k:'trig',l:'動作',opts:[{v:'high',l:'INがHIGHでON'},{v:'low',l:'INがLOWでON（Lレベルトリガ）'}]}], defaults:{trig:'high'},
+    pinDefs:[['VCC','vcc5','VCC（5V）'],['GND','gnd'],['IN','din','IN（信号）']], box:[-18,-108,200,10], pcb:'#1b2a44',
+    art: () => `<rect x="42" y="-98" width="104" height="66" rx="3" fill="#1e6fd9"/><text x="94" y="-62" class="slk" text-anchor="middle">SRD-05VDC</text><rect x="156" y="-100" width="36" height="80" rx="2" fill="#2e8b57"/><circle cx="174" cy="-86" r="7" fill="#9aa0a6"/><circle cx="174" cy="-60" r="7" fill="#9aa0a6"/><circle cx="174" cy="-34" r="7" fill="#9aa0a6"/><text x="150" y="-83" class="slk" text-anchor="end">NO</text><text x="150" y="-57" class="slk" text-anchor="end">COM</text><text x="150" y="-31" class="slk" text-anchor="end">NC</text><circle cx="10" cy="-84" r="5" fill="#ff3b3b"/>` }),
+  servo: modType({ name:'サーボモーター SG90', sub:'角度を指定して動く', cat:'output', chip:'#2a6fdb', icon:'SRV',
+    pinDefs:[['GND','gnd','GND（茶色）'],['VCC','vcc5','VCC（赤）'],['SIG','pwm','信号（オレンジ）']], box:[-46,-232,106,10], pcb:null,
+    art: () => `<path d="M0 -27 L0 -100" stroke="#6d4c41" stroke-width="5"/><path d="M20 -27 L20 -100" stroke="#d32f2f" stroke-width="5"/><path d="M40 -27 L40 -100" stroke="#f57c00" stroke-width="5"/><rect x="-44" y="-196" width="148" height="96" rx="6" fill="#2a6fdb" fill-opacity=".92" stroke="#1a4fa8"/><circle cx="-6" cy="-196" r="16" fill="#1a4fa8"/><text x="60" y="-140" class="slk" text-anchor="middle" style="font-size:12px">SG90</text>` }),
+  lcd: modType({ name:'LCD1602 液晶', sub:'I2C・16文字×2行', cat:'output', chip:'#2c5fd6', icon:'LCD',
+    pinDefs:[['GND','gnd'],['VCC','vcc5','VCC（5V）'],['SDA','sda'],['SCL','scl']], box:[-26,-304,606,10], pcb:'#2f7a3a',
+    art: () => `<rect x="16" y="-276" width="548" height="160" rx="5" fill="#111"/><rect x="36" y="-258" width="508" height="124" fill="#2c5fd6"/><rect x="-14" y="-104" width="100" height="70" rx="3" fill="#1a1a1a"/><text x="36" y="-64" class="slk" text-anchor="middle">I2C</text>` }),
+  oled: modType({ name:'OLED 0.96インチ', sub:'I2C・128×64', cat:'output', chip:'#0b0b0b', icon:'OLED',
+    pinDefs:[['GND','gnd'],['VCC','vcc'],['SCL','scl'],['SDA','sda']], box:[-78,-216,138,10], pcb:'#1b3f8f',
+    art: () => `<rect x="-64" y="-200" width="188" height="150" rx="3" fill="#0b0b0b"/>` }),
+};
+const CATS = [['board','ボード'],['basic','基本部品'],['sensor','センサー'],['output','表示・出力']];
+const WIRE_COLORS = [['#d32f2f','赤'],['#222222','黒'],['#f2c200','黄'],['#2e9e44','緑'],['#1e63d6','青'],['#f57c00','オレンジ'],['#eeeeee','白'],['#8e44ad','紫']];
+const colorName = c => (WIRE_COLORS.find(w=>w[0]===c)||[0,''])[1];
+
+const isMCU = p => !!(p && TYPES[p.type].mcu);
+const mcuPart = () => S.parts.find(isMCU);
+const isPicoCircuit = () => mcuPart()?.type==='pico';
+const GN = n => (isPicoCircuit()?'GP':'GPIO')+n;
+const mcuLabel = p => p.type==='pico'?'Pico':'ラズパイ';
+const I2C_SDA = {pi:[2], pico:[0,4,8,12,16,20,2,6,10,14,18,26]};
+const I2C_SCL = {pi:[3], pico:[1,5,9,13,17,21,3,7,11,15,19,27]};
+function dispName(p){
+  if (p.type==='led') return `LED（${LED_COLORS[p.props.color]?.l||'赤'}）`;
+  if (p.type==='resistor') return `抵抗（${fmtOhm(p.props.ohm)}）`;
+  return TYPES[p.type].name;
+}
+function pinsOf(p){
+  const T=TYPES[p.type];
+  return T.pins(p.props).map(q=>{ const [dx,dy]=rotXY(q.x,q.y,p.rot); return Object.assign({},q,{gx:p.x+dx,gy:p.y+dy}); });
+}
+
+/* ===================== 状態 ===================== */
+let S = {title:'', parts:[], wires:[], order:[], code:''};
+let nid = 1;
+let sel = null;            // {kind:'part'|'wire', id}
+let M = null;              // 解析結果
+let view = {s:1, tx:0, ty:0};
+let wireColor = '#1e63d6';
+let stepMode = null;       // {i}
+let answer = null;         // お手本（シリアライズ済みオブジェクト）
+let hover = null;          // {key, root}
+let flashIds = new Set();
+let showLabels = true;
+let tab = 'insp';
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+
+function addPart(type, x, y, props, rot){
+  const T=TYPES[type];
+  const p={id:'p'+(nid++), type, x, y, rot:rot||0, props:Object.assign({}, T.defaults||{}, props||{}), note:''};
+  S.parts.push(p); if(!T.board) S.order.push(p.id); return p;
+}
+function addWire(a, b, color, note){
+  const w={id:'w'+(nid++), a:[a[0],a[1]], b:[b[0],b[1]], color, note:note||''};
+  S.wires.push(w); S.order.push(w.id); return w;
+}
+const getPart = id => S.parts.find(p=>p.id===id);
+const getWire = id => S.wires.find(w=>w.id===id);
+
+/* ===================== 解析（つながり） ===================== */
+class UF{ constructor(){this.p=new Map();} find(a){ let p=this.p; if(!p.has(a)){p.set(a,a);return a;} let r=a; while(p.get(r)!==r) r=p.get(r); while(p.get(a)!==r){const n=p.get(a);p.set(a,r);a=n;} return r; } union(a,b){ const ra=this.find(a), rb=this.find(b); if(ra!==rb) this.p.set(ra,rb); } }
+function analyze(){
+  const uf=new UF(), pts=new Map();
+  const gp=(x,y)=>{ const k=K(x,y); let o=pts.get(k); if(!o){ o={x,y,key:k,holes:[],pins:[],ends:[]}; pts.set(k,o);} return o; };
+  const partById=new Map(S.parts.map(p=>[p.id,p]));
+  for (const p of S.parts){
+    const T=TYPES[p.type];
+    if (T.bb){
+      bbLayout(T.cols).forEach((h,i)=>{ const [dx,dy]=rotXY(h.x,h.y,p.rot); const x=p.x+dx, y=p.y+dy;
+        gp(x,y).holes.push({part:p.id,i}); const hk='h:'+p.id+':'+i; uf.union(hk,'s:'+p.id+':'+h.strip); uf.union(hk,'p:'+K(x,y)); });
+      continue;
+    }
+    pinsOf(p).forEach((q,i)=>{ gp(q.gx,q.gy).pins.push({part:p.id,i}); const tk='t:'+p.id+':'+i; uf.union(tk,'p:'+K(q.gx,q.gy));
+      if (T.mcu && (q.role==='3v3'||q.role==='5v'||q.role==='gnd')) uf.union(tk,'pw:'+p.id+':'+q.role); });
+    if (T.links) for (const [a,b] of T.links) uf.union('t:'+p.id+':'+a,'t:'+p.id+':'+b);
+  }
+  for (const w of S.wires){ gp(w.a[0],w.a[1]).ends.push({w:w.id,e:'a'}); gp(w.b[0],w.b[1]).ends.push({w:w.id,e:'b'}); uf.union('p:'+K(w.a[0],w.a[1]),'p:'+K(w.b[0],w.b[1])); }
+  const nets=new Map();
+  for (const p of S.parts){ if (TYPES[p.type].bb) continue;
+    pinsOf(p).forEach((q,i)=>{ const r=uf.find('t:'+p.id+':'+i); let n=nets.get(r); if(!n){n={root:r,terms:[]};nets.set(r,n);} n.terms.push({part:p,i,pin:q}); }); }
+  const rootPts=new Map();
+  for (const [k,o] of pts){ const r=uf.find('p:'+k); o.root=r; if(!rootPts.has(r)) rootPts.set(r,[]); rootPts.get(r).push(o); }
+  M={uf,pts,nets,rootPts,partById};
+}
+const rootT = (p,i) => M.uf.find('t:'+p.id+':'+i);
+function kinds(root){
+  const n=M.nets.get(root); const k={v33:false,v5:false,gnd:false,gpios:[],terms:n?n.terms:[]};
+  for (const t of k.terms){ if (!isMCU(t.part)) continue; const r=t.pin.role; k.mcu=t.part.type;
+    if(r==='3v3')k.v33=true; else if(r==='5v')k.v5=true; else if(r==='gnd')k.gnd=true; else if(r==='gpio'&&!k.gpios.includes(t.pin.gpio)) k.gpios.push(t.pin.gpio); }
+  return k;
+}
+function viaR(root){ // 抵抗の反対側のネット
+  const out=[]; const n=M.nets.get(root); if(!n) return out;
+  for (const t of n.terms) if (t.part.type==='resistor'){ const o=rootT(t.part,1-t.i); if(o!==root) out.push(o); }
+  return out;
+}
+const isSrc = k => k.v33||k.v5||k.gpios.length>0;
+function srcName(k){ return k.gpios.length?GN(k.gpios[0]):k.v5?'5V':k.v33?'3.3V':''; }
+
+/* ===================== 配線チェック ===================== */
+function runChecks(){
+  const out=[]; const seen=new Set();
+  const push=(lv,msg,ids)=>{ if(seen.has(msg)) return; seen.add(msg); out.push({lv,msg,ids:ids||[]}); };
+  const comps=S.parts.filter(p=>!TYPES[p.type].board&&!isMCU(p));
+  const pis=S.parts.filter(isMCU);
+  if (!S.parts.length){ push('info','部品がありません。左の一覧からラズパイとブレッドボードを置きましょう'); return out; }
+  if (!pis.length && comps.length) push('info','ラズパイ（またはPico）が置かれていません');
+
+  // 電源まわり（ネット単位）
+  for (const [root,n] of M.nets){
+    const k=kinds(root); const ids=[...new Set(k.terms.map(t=>t.part.id))];
+    if ((k.v33||k.v5)&&k.gnd) push('error',`ショート：${k.v5?'5V':'3.3V'}とGNDが直接つながっています。ラズパイが壊れるおそれがあります`,ids);
+    if (k.v33&&k.v5) push('error','3.3Vと5Vが直接つながっています',ids);
+    if (k.v5&&k.gpios.length) push('error',`${k.gpios.map(GN).join('・')}に5Vがつながっています。GPIOは3.3Vまでです`,ids);
+    if (k.gpios.length&&(k.gnd||k.v33)&&!k.v5) push('warn',`${GN(k.gpios[0])}が${k.gnd?'GND':'3.3V'}に直結しています。出力にするとショートします`,ids);
+    if (k.gpios.length>1) push('warn',`${k.gpios.map(GN).join('と')}が同じところにつながっています`,ids);
+  }
+  // 部品ごと
+  for (const p of comps){
+    const T=TYPES[p.type]; const pins=pinsOf(p); const nm=dispName(p);
+    const before=out.length;
+    // 端子どうしが同じネット
+    if (p.type!=='button'){
+      const byRoot=new Map(); pins.forEach((q,i)=>{ const r=rootT(p,i); if(!byRoot.has(r)) byRoot.set(r,[]); byRoot.get(r).push(q); });
+      for (const qs of byRoot.values()) if (qs.length>1){
+        const names=qs.map(q=>q.name).join('と');
+        push(p.type==='resistor'?'warn':'error', `${nm}：${names}が同じ列（同じつながり）にささっています。部品を通らずに電気が流れてしまいます`, [p.id]);
+      }
+    }
+    if (p.type==='led'){
+      const a=rootT(p,0), c=rootT(p,1);
+      if (a!==c){
+        const A=kinds(a), C=kinds(c), aR=viaR(a).map(kinds), cR=viaR(c).map(kinds);
+        const aS=isSrc(A), aSR=aR.some(isSrc), aG=A.gnd, aGR=aR.some(k=>k.gnd);
+        const cS=isSrc(C), cSR=cR.some(isSrc), cG=C.gnd, cGR=cR.some(k=>k.gnd);
+        if (aS&&cG) push('error',`${nm}：抵抗がありません。電流が流れすぎてLEDやラズパイを傷めます。LEDと直列に抵抗（220Ωなど）を入れましょう`,[p.id]);
+        else if ((aS||aSR)&&(cG||cGR)) push('ok',`${nm}：${srcName(aS?A:aR.find(isSrc))} → ${aS?'LED → 抵抗':'抵抗 → LED'} → GND。正しい向きです`,[p.id]);
+        else if ((aG||aGR)&&(cS||cSR)) push('warn',`${nm}：向きが逆です。長い足（＋）を${srcName(cS?C:cR.find(isSrc))}側、短い足（−）をGND側にします`,[p.id]);
+        else if (A.terms.length<=1||C.terms.length<=1) push('info',`${nm}：${A.terms.length<=1?'長い足（＋）':'短い足（−）'}がどこにもつながっていません`,[p.id]);
+        else push('warn',`${nm}：GPIO（または電源）からGNDまでの道すじができていません`,[p.id]);
+      }
+    } else if (p.type==='buzzer'){
+      const a=rootT(p,0), c=rootT(p,1);
+      if (a!==c){ const A=kinds(a), C=kinds(c);
+        if (isSrc(A)&&C.gnd) push('ok',`${nm}：${srcName(A)}とGNDにつながっています`,[p.id]);
+        else if (A.gnd&&isSrc(C)) push('warn',`${nm}：＋と−が逆です`,[p.id]);
+        else push('info',`${nm}：＋をGPIO、−をGNDにつなぎましょう`,[p.id]); }
+    } else if (p.type==='button'){
+      const s0=rootT(p,0), s1=rootT(p,1);
+      if (s0===s1) push('warn',`${nm}：押さなくても常につながっています。スイッチを90°回転させて、中央の溝をまたぐようにさしましょう`,[p.id]);
+      else { const A=kinds(s0), B=kinds(s1);
+        const g = A.gpios.length?A:B.gpios.length?B:null, o = g===A?B:A;
+        if (!g) push('info',`${nm}：GPIOにつながっていません`,[p.id]);
+        else if (o.v5) push('error',`${nm}：押すとGPIOに5Vがかかります。3.3VかGNDを使いましょう`,[p.id]);
+        else if (o.gnd) push('ok',`${nm}：${GN(g.gpios[0])} と GND の間。押すとLOWになります（プログラムでプルアップを有効に）`,[p.id]);
+        else if (o.v33) push('ok',`${nm}：${GN(g.gpios[0])} と 3.3V の間。押すとHIGHになります（プログラムでプルダウンを有効に）`,[p.id]);
+        else push('info',`${nm}：もう一方の足をGNDか3.3Vにつなぎましょう`,[p.id]); }
+    } else if (p.type==='resistor'){
+      pins.forEach((q,i)=>{ if (kinds(rootT(p,i)).terms.length<=1) push('info',`${nm}：${q.label}がどこにもつながっていません`,[p.id]); });
+    } else if (T.pinDefs){
+      checkModule(p, push);
+      if (out.length===before) push('ok',`${nm}：配線OK`,[p.id]);
+    }
+  }
+  // 浮いているジャンパ線の端
+  for (const o of M.pts.values()) if (o.ends.length===1 && !o.holes.length && !o.pins.length){
+    const w=getWire(o.ends[0].w); push('warn',`${colorName(w.color)}のジャンパ線：片方の端がどこにもささっていません`,[w.id]);
+  }
+  const ord={error:0,warn:1,info:2,ok:3};
+  out.sort((a,b)=>ord[a.lv]-ord[b.lv]);
+  return out;
+}
+function checkModule(p, push){
+  const pins=pinsOf(p); const nm=dispName(p);
+  const vi=pins.findIndex(q=>q.role==='vcc'||q.role==='vcc5');
+  const VK=vi>=0?kinds(rootT(p,vi)):null;
+  const ids=[p.id];
+  pins.forEach((q,i)=>{
+    const r=rootT(p,i), k=kinds(r), lone=k.terms.length<=1;
+    switch(q.role){
+      case 'vcc': if(!(k.v33||k.v5)) push('warn', lone?`${nm}：VCCがつながっていません（3.3Vへ）`:`${nm}：VCCが電源（3.3V/5V）につながっていません`, ids); break;
+      case 'vcc5': if(k.v5){} else if(k.v33) push('warn',`${nm}：VCCは5Vが必要です（今は3.3V）`,ids); else push('warn',`${nm}：VCC（5V）がつながっていません`,ids); break;
+      case 'gnd': if(!k.gnd) push('warn',`${nm}：GNDがつながっていません`,ids); break;
+      case 'dout': if(!k.gpios.length) push('warn',`${nm}：${q.name}をGPIOにつなぎましょう`,ids);
+        else if(VK&&VK.v5) push('error',`${nm}：5Vで給電しているので${q.name}から5Vが出ます。VCCは3.3Vにしましょう`,ids); break;
+      case 'din': if(!k.gpios.length) push('warn',`${nm}：${q.name}をGPIOにつなぎましょう`,ids); break;
+      case 'echo':
+        if (k.gpios.length && VK && VK.v5) push('error',`${nm}：Echoは5Vを出します。GPIOに直結せず、抵抗で分圧（例：1kΩと2kΩ）しましょう`,ids);
+        else if (!k.gpios.length){ if (viaR(r).some(x=>kinds(x).gpios.length)) push('info',`${nm}：Echoは抵抗を通してGPIOへ。分圧になっているか確認しましょう`,ids); else push('warn',`${nm}：EchoをGPIOにつなぎましょう`,ids); }
+        break;
+      case 'aout':
+        if (k.mcu==='pico' || (!k.mcu && isPicoCircuit())){ if(k.gpios.some(g=>g>=26&&g<=28)) {} else if(k.gpios.length) push('warn',`${nm}：アナログ値はGP26〜GP28（ADC0〜2）でしか読めません`,ids); else push('warn',`${nm}：AOUTをGP26〜GP28（ADC）につなぎましょう`,ids); }
+        else if(k.gpios.length) push('warn',`${nm}：AOUTはアナログ信号です。ラズパイのGPIOでは読めないので、ADC（MCP3008など）を通します`,ids);
+        else push('info',`${nm}：AOUTはADC（MCP3008など）を通して読み取ります。Pico WならGP26〜28に直接つなげます`,ids); break;
+      case 'sda': case 'scl': {
+        if (isPicoCircuit()){
+          const okSet=q.role==='sda'?I2C_SDA.pico:I2C_SCL.pico, otherSet=q.role==='sda'?I2C_SCL.pico:I2C_SDA.pico;
+          if (k.gpios.some(g=>okSet.includes(g))) {}
+          else if (k.gpios.some(g=>otherSet.includes(g))) push('error',`${nm}：SDAとSCLが逆です`,ids);
+          else if (k.gpios.length) push('error',`${nm}：GP${k.gpios[0]}は${q.name}に使えません（例：SDA=GP0・SCL=GP1、SDA=GP4・SCL=GP5）`,ids);
+          else push('warn',`${nm}：${q.name}がつながっていません`,ids);
+          break;
+        }
+        const want=q.role==='sda'?2:3, other=q.role==='sda'?3:2, no=want===2?3:5;
+        if (k.gpios.includes(want)) {}
+        else if (k.gpios.includes(other)) push('error',`${nm}：SDAとSCLが逆です`,ids);
+        else if (k.gpios.length) push('error',`${nm}：${q.name}はGPIO${want}（${no}番ピン）につなぎます`,ids);
+        else push('warn',`${nm}：${q.name}がつながっていません（GPIO${want}・${no}番ピンへ）`,ids);
+        break; }
+      case 'onewire':
+        if (!k.gpios.length) push('warn',`${nm}：DATAをGPIOにつなぎましょう（ふつうはGPIO4・7番ピン）`,ids);
+        else { if(!isPicoCircuit()&&!k.gpios.includes(4)) push('info',`${nm}：1-Wireの初期設定はGPIO4です。GPIO${k.gpios[0]}を使うときは設定を変えます`,ids);
+          if(!viaR(r).some(x=>kinds(x).v33)) push('warn',`${nm}：DATAと3.3Vの間に4.7kΩのプルアップ抵抗が必要です`,ids); }
+        break;
+      case 'pwm':
+        if (!k.gpios.length) push('warn',`${nm}：信号線をGPIOにつなぎましょう`,ids);
+        else if (!isPicoCircuit()&&![12,13,18,19].includes(k.gpios[0])) push('info',`${nm}：GPIO${k.gpios[0]}だとソフトウェアPWMになり、ぶれることがあります。GPIO18（12番ピン）がおすすめです`,ids);
+        break;
+    }
+  });
+  if (p.type==='servo' && VK && VK.v5) push('info',`${nm}：動きが不安定なときは、サーボ用に別の5V電源を使います（GNDは共通に）`,ids);
+  if (p.type==='lcd' && VK && VK.v5) push('info',`${nm}：5V給電のI2C液晶は、SDA/SCLが5Vに引き上げられる製品があります。心配ならレベル変換を使います`,ids);
+}
+
+/* ===================== お手本と比べる ===================== */
+function netSignatures(){
+  const sigs=[];
+  for (const [root,n] of M.nets){
+    const piL=new Set(), cl=[];
+    for (const t of n.terms){
+      if (isMCU(t.part)){ if(t.pin.role!=='nc') piL.add(t.pin.role==='gpio'?(t.part.type==='pico'?'GP':'GPIO')+t.pin.gpio:t.pin.role==='3v3'?'3.3V':t.pin.role==='5v'?'5V':'GND'); }
+      else if (t.part.type==='resistor') cl.push(dispName(t.part)+'の足');
+      else if (t.part.type==='button') cl.push('スイッチの足');
+      else cl.push(dispName(t.part)+'の'+t.pin.name);
+    }
+    const labels=[...piL].sort().concat(cl.sort());
+    if (labels.length>=2) sigs.push(labels);
+  }
+  return sigs;
+}
+function withState(st, fn){
+  const saveS=S, saveM=M; S=st; analyze(); const r=fn(); S=saveS; M=saveM; return r;
+}
+function compareAnswer(){
+  const mine=netSignatures();
+  const ans=withState(deserialize(answer), netSignatures);
+  const key=l=>l.join(' / ');
+  const pool=new Map(); for (const l of mine){ const k=key(l); pool.set(k,(pool.get(k)||0)+1); }
+  const missing=[]; let match=0;
+  for (const l of ans){ const k=key(l); if (pool.get(k)>0){ pool.set(k,pool.get(k)-1); match++; } else missing.push(l); }
+  const extra=[]; for (const l of mine){ const k=key(l); if (pool.get(k)>0){ pool.set(k,pool.get(k)-1); extra.push(l); } }
+  // 近いもの同士を対応づける
+  const pairs=[]; const ex=extra.slice();
+  for (const m of missing){
+    let best=-1, bi=-1; ex.forEach((e,i)=>{ const s=m.filter(x=>e.includes(x)).length; if(s>best){best=s;bi=i;} });
+    if (bi>=0 && best>0){ pairs.push([m,ex[bi]]); ex.splice(bi,1); } else pairs.push([m,null]);
+  }
+  for (const e of ex) pairs.push([null,e]);
+  return {total:ans.length, match, pairs};
+}
+
+/* ===================== 場所の名前・手順 ===================== */
+function locName(o, exclPart){
+  if (!o) return '（どこにもささっていない）';
+  if (o.holes.length){
+    const h=o.holes[0], p=M.partById.get(h.part); const L=bbLayout(TYPES[p.type].cols)[h.i];
+    const bbs=S.parts.filter(q=>TYPES[q.type].bb);
+    return (bbs.length>1?`ブレッドボード${bbs.indexOf(p)+1}の`:'') + L.name;
+  }
+  const pin=o.pins.find(q=>q.part!==exclPart);
+  if (pin){ const p=M.partById.get(pin.part), q=pinsOf(p)[pin.i];
+    if (isMCU(p)) return `${mcuLabel(p)} ${q.num}番ピン（${q.name}${q.alt?'・'+q.alt:''}）`;
+    return `${dispName(p)}の${q.name}`; }
+  return '（どこにもささっていない）';
+}
+function stepText(id){
+  const p=getPart(id);
+  if (p){
+    const pins=pinsOf(p); const locs=pins.map(q=>M.pts.get(K(q.gx,q.gy)));
+    const inserted=locs.filter(o=>o&&o.holes.length).length;
+    if (!inserted) return `${dispName(p)}を用意する（ジャンパ線で直接つなぐ）`;
+    if (p.type==='resistor') return `${dispName(p)}を ${locs.map(o=>locName(o,p.id)).join(' と ')} にさす`;
+    if (p.type==='button') return `${dispName(p)}を ${locs.map(o=>locName(o,p.id)).join('・')} にさす`;
+    return `${dispName(p)}の ` + pins.map((q,i)=>`${q.label}を ${locName(locs[i],p.id)}`).join('、') + ' にさす';
+  }
+  const w=getWire(id); if (!w) return '';
+  let A=M.pts.get(K(w.a[0],w.a[1])), B=M.pts.get(K(w.b[0],w.b[1]));
+  const isPi=o=>o&&o.pins.some(q=>isMCU(M.partById.get(q.part)));
+  if (isPi(B)&&!isPi(A)) [A,B]=[B,A];
+  return `${colorName(w.color)}のジャンパ線で ${locName(A)} と ${locName(B)} をつなぐ`;
+}
+
+/* ===================== 保存形式 ===================== */
+function serialize(st){
+  st=st||S;
+  return {v:1, t:st.title,
+    p:st.parts.map(p=>[p.id,p.type,p.x,p.y,p.rot,p.props,p.note||'']),
+    w:st.wires.map(w=>[w.id,w.a,w.b,w.color,w.note||'']),
+    o:st.order, c:st.code||''};
+}
+function deserialize(o){
+  return {title:o.t||'',
+    parts:(o.p||[]).filter(a=>TYPES[a[1]]).map(a=>({id:a[0],type:a[1],x:a[2],y:a[3],rot:a[4]||0,props:Object.assign({},TYPES[a[1]].defaults||{},a[5]||{}),note:a[6]||''})),
+    wires:(o.w||[]).map(a=>({id:a[0],a:a[1],b:a[2],color:a[3],note:a[4]||''})),
+    order:(o.o||[]).slice(), code:o.c||''};
+}
+function toCode(obj){
+  const j=JSON.stringify(obj);
+  if (window.LZString) return 'HL1.'+LZString.compressToEncodedURIComponent(j);
+  return 'HL0.'+btoa(unescape(encodeURIComponent(j)));
+}
+function fromCode(code){
+  code=(code||'').trim().replace(/\s+/g,'');
+  const m=code.match(/HL([01])\.([A-Za-z0-9+\/=$\-_]+)/);
+  if (!m) throw new Error('コードの形がちがいます。HL1. ではじまる文字列をそのまま貼り付けてください');
+  let j;
+  if (m[1]==='1'){ if(!window.LZString) throw new Error('読み込みに必要な部品が読み込めませんでした'); j=LZString.decompressFromEncodedURIComponent(m[2]); }
+  else j=decodeURIComponent(escape(atob(m[2])));
+  if (!j) throw new Error('コードの一部が欠けているようです。最初から最後までコピーし直してください');
+  const o=JSON.parse(j); if(!o||!o.p) throw new Error('回路のデータが見つかりません');
+  return o;
+}
+function loadState(st){
+  S=st; sel=null;
+  nid = 1 + Math.max(0,...S.parts.map(p=>+p.id.slice(1)||0),...S.wires.map(w=>+w.id.slice(1)||0));
+  const ids=new Set([...S.parts.filter(p=>!TYPES[p.type].board).map(p=>p.id),...S.wires.map(w=>w.id)]);
+  S.order=S.order.filter(id=>ids.has(id)); for(const id of ids) if(!S.order.includes(id)) S.order.push(id);
+}
+
+/* ===================== 履歴 ===================== */
+let hist=[], fut=[], lastSnap='';
+const snap = () => JSON.stringify(serialize());
+function commit(){ const s=snap(); if (s===lastSnap){ afterChange(); return; } hist.push(lastSnap); if(hist.length>120) hist.shift(); fut=[]; lastSnap=s; afterChange(); }
+function undo(){ if(!hist.length) return; fut.push(lastSnap); lastSnap=hist.pop(); loadState(deserialize(JSON.parse(lastSnap))); afterChange(); }
+function redo(){ if(!fut.length) return; hist.push(lastSnap); lastSnap=fut.pop(); loadState(deserialize(JSON.parse(lastSnap))); afterChange(); }
+function afterChange(){
+  analyze(); renderAll(); renderSide();
+  store.set('haisenlab.v1', lastSnap||snap());
+  $('#bUndo').disabled=!hist.length; $('#bRedo').disabled=!fut.length;
+}
+
+/* ===================== 描画 ===================== */
+const cv=$('#cv'), vp=$('#vp');
+const partEls=new Map();
+function applyView(){ vp.setAttribute('transform',`translate(${view.tx} ${view.ty}) scale(${view.s})`); }
+function syncParts(){
+  const seen=new Set();
+  const st = stepMode ? stepClasses() : null;
+  for (const p of S.parts){
+    seen.add(p.id); const T=TYPES[p.type];
+    let e=partEls.get(p.id);
+    if (!e){ const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.dataset.part=p.id; g.dataset.type=p.type; g.setAttribute('class','part');
+      (T.board?$('#lyBoards'):$('#lyParts')).appendChild(g); e={g,sig:null}; partEls.set(p.id,e); }
+    const sig=p.type+JSON.stringify(p.props);
+    if (e.sig!==sig){
+      let marks=''; if(!T.board) for (const q of T.pins(p.props)) marks+=`<circle class="pm" cx="${q.x*P}" cy="${q.y*P}" r="5"/>`;
+      e.g.innerHTML=T.draw(p.props)+marks+'<g class="fx"></g>'; e.sig=sig; e.fx=e.g.lastElementChild; e.fxs=null;
+    }
+    const f=fxSVG(p); if (e.fxs!==f){ e.fx.innerHTML=f; e.fxs=f; }
+    e.g.setAttribute('transform',`translate(${p.x*P} ${p.y*P}) rotate(${p.rot*90})`);
+    const cls=['part']; if(sel&&sel.kind==='part'&&sel.id===p.id&&!stepMode) cls.push('sel'); if(flashIds.has(p.id)) cls.push('flash'); if(st&&st[p.id]) cls.push(st[p.id]);
+    e.g.setAttribute('class',cls.join(' '));
+  }
+  for (const [id,e] of partEls) if(!seen.has(id)){ e.g.remove(); partEls.delete(id); }
+}
+function wirePath(a,b){
+  const ax=a[0]*P, ay=a[1]*P, bx=b[0]*P, by=b[1]*P;
+  const dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1;
+  let nx=-dy/len, ny=dx/len; if (ny>0||(ny===0&&nx>0)){ nx=-nx; ny=-ny; }
+  const bow=Math.min(len*0.14,46);
+  return `M${ax} ${ay} Q${(ax+bx)/2+nx*bow} ${(ay+by)/2+ny*bow} ${bx} ${by}`;
+}
+function renderWires(){
+  const st = stepMode ? stepClasses() : null;
+  const hlW = hover && M ? new Set((M.rootPts.get(hover.root)||[]).flatMap(o=>o.ends.map(e=>e.w))) : new Set();
+  let s='';
+  for (const w of S.wires){
+    const d=wirePath(w.a,w.b);
+    const cls=['wire']; if(sel&&sel.kind==='wire'&&sel.id===w.id&&!stepMode) cls.push('sel'); if(hlW.has(w.id)) cls.push('hlw'); if(flashIds.has(w.id)) cls.push('flash'); if(st&&st[w.id]) cls.push(st[w.id]);
+    s+=`<g class="${cls.join(' ')}" data-wire="${w.id}"><path class="hit" d="${d}"/><path class="ol" d="${d}" stroke-width="8"/><path class="core" d="${d}" stroke="${w.color}" stroke-width="5"/><path class="shine" d="${d}" stroke-width="1.4"/>`;
+    s+=`<circle class="wend" data-wend="${w.id}:a" cx="${w.a[0]*P}" cy="${w.a[1]*P}" r="5"/><circle class="wend" data-wend="${w.id}:b" cx="${w.b[0]*P}" cy="${w.b[1]*P}" r="5"/></g>`;
+  }
+  $('#lyWires').innerHTML=s;
+}
+let preview=null;
+function drawOverlay(){
+  let s='';
+  if (hover && M && !drag){
+    const list=M.rootPts.get(hover.root)||[];
+    for (const o of list) if (o.holes.length||o.pins.length) s+=`<circle class="hlfill" cx="${o.x*P}" cy="${o.y*P}" r="8"/><circle class="hlring" cx="${o.x*P}" cy="${o.y*P}" r="8"/>`;
+  }
+  if (preview) s+=`<path class="preview" d="${wirePath(preview.a,preview.b)}" stroke="${preview.color}"/><circle class="hlring" cx="${preview.b[0]*P}" cy="${preview.b[1]*P}" r="8"/>`;
+  $('#lyOver').innerHTML=s;
+}
+function renderAll(){ syncParts(); renderWires(); drawOverlay(); cv.classList.toggle('stepping',!!stepMode); cv.classList.toggle('running',!!run); cv.classList.toggle('nolabels',!showLabels); }
+function renderLight(){ syncParts(); renderWires(); drawOverlay(); }
+
+/* ===================== 表示範囲 ===================== */
+function partBounds(p){
+  const [x0,y0,x1,y1]=TYPES[p.type].bbox(p.props);
+  const cs=[[x0,y0],[x1,y0],[x0,y1],[x1,y1]].map(([x,y])=>rotXY(x,y,p.rot));
+  return cs.map(([x,y])=>[x+p.x*P,y+p.y*P]);
+}
+function fitView(){
+  const r=cv.getBoundingClientRect(); if(!r.width) return;
+  let pts=[]; for (const p of S.parts) pts=pts.concat(partBounds(p)); for (const w of S.wires) pts.push([w.a[0]*P,w.a[1]*P],[w.b[0]*P,w.b[1]*P]);
+  if (!pts.length){ view={s:1,tx:r.width/2,ty:r.height/2}; applyView(); return; }
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
+  const x0=Math.min(...xs)-30, x1=Math.max(...xs)+30, y0=Math.min(...ys)-30, y1=Math.max(...ys)+30;
+  const s=Math.min(2.2,Math.max(0.2,Math.min(r.width/(x1-x0), r.height/(y1-y0))));
+  view={s, tx:(r.width-(x1-x0)*s)/2-x0*s, ty:(r.height-(y1-y0)*s)/2-y0*s};
+  applyView();
+}
+function zoomAt(f, cx, cy){
+  const ns=Math.min(4,Math.max(0.15,view.s*f)); const k=ns/view.s;
+  view.tx=cx-(cx-view.tx)*k; view.ty=cy-(cy-view.ty)*k; view.s=ns; applyView();
+}
+function toWorld(e){ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left-view.tx)/view.s, y:(e.clientY-r.top-view.ty)/view.s}; }
+function gridOf(w){ const gx=Math.round(w.x/P), gy=Math.round(w.y/P); return {gx,gy,d:Math.hypot(w.x-gx*P,w.y-gy*P)/P}; }
+
+/* ===================== 操作 ===================== */
+let drag=null;
+const pointers=new Map();
+function isBoardPart(id){ const p=M.partById.get(id); return p && TYPES[p.type].board; }
+function pointFree(o){ return o.ends.length===0 && !o.pins.some(q=>!isBoardPart(q.part)); }
+function select(s){ sel=s; renderLight(); renderInspector(); renderSteps(); if(s) switchTab('insp',true); }
+
+function startMove(p, w){
+  const T=TYPES[p.type];
+  const followers=new Set();
+  const own=new Set(pinsOf(p).map(q=>K(q.gx,q.gy)));
+  if (T.bb){
+    for (const o of M.pts.values()) if (o.holes.some(h=>h.part===p.id)) own.add(o.key);
+    for (const q of S.parts){ if (TYPES[q.type].board) continue; const ps=pinsOf(q); if (ps.length && ps.every(pp=>{ const o=M.pts.get(K(pp.gx,pp.gy)); return o&&o.holes.some(h=>h.part===p.id); })) followers.add(q.id); }
+  }
+  for (const id of followers) for (const q of pinsOf(getPart(id))) own.add(K(q.gx,q.gy));
+  const ends=[]; for (const wi of S.wires){ if (own.has(K(wi.a[0],wi.a[1]))) ends.push({w:wi,e:'a',o:wi.a.slice()}); if (own.has(K(wi.b[0],wi.b[1]))) ends.push({w:wi,e:'b',o:wi.b.slice()}); }
+  drag={mode:'move', start:w, moved:false, parts:[p,...[...followers].map(getPart)].map(q=>({p:q,ox:q.x,oy:q.y})), ends};
+}
+
+cv.addEventListener('pointerdown', e=>{
+  if (e.button===2) return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if (pointers.size===2){ const [a,b]=[...pointers.values()]; if(drag&&drag.mode==='move') { for(const it of drag.parts){it.p.x=it.ox;it.p.y=it.oy;} for(const en of drag.ends) en.w[en.e]=en.o; }
+    preview=null; drag={mode:'pinch', d:Math.hypot(a.x-b.x,a.y-b.y), cx:(a.x+b.x)/2, cy:(a.y+b.y)/2}; renderLight(); return; }
+  hideTip();
+  const w=toWorld(e), g=gridOf(w), near=g.d<0.42, o=M.pts.get(K(g.gx,g.gy));
+  const t=e.target;
+  if (run){
+    const pe=t.closest&&t.closest('[data-part]');
+    if (pe && pe.dataset.type==='button' && e.button===0){ drag={mode:'press',id:pe.dataset.part}; run.pressed.add(drag.id); updateSim(); return; }
+    drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty}; cv.classList.add('panning'); return;
+  }
+  if (e.button===1 || stepMode){ drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty}; cv.classList.add('panning'); return; }
+  const wend=t.closest&&t.closest('[data-wend]');
+  if (wend){ const [id,end]=wend.dataset.wend.split(':'); const wi=getWire(id); sel={kind:'wire',id}; drag={mode:'wend',w:wi,e:end,o:wi[end].slice(),moved:false}; renderLight(); renderInspector(); return; }
+  const wireEl=t.closest&&t.closest('[data-wire]');
+  if (wireEl){ const wi=getWire(wireEl.dataset.wire); sel={kind:'wire',id:wi.id}; drag={mode:'wmove',w:wi,start:w,a:wi.a.slice(),b:wi.b.slice(),moved:false}; renderLight(); renderInspector(); switchTab('insp',true); return; }
+  const partEl=t.closest&&t.closest('[data-part]');
+  if (partEl){
+    const p=getPart(partEl.dataset.part), T=TYPES[p.type];
+    if (near && o){
+      if (T.board){
+        const mine=o.holes.some(h=>h.part===p.id)||o.pins.some(q=>q.part===p.id);
+        if (mine && pointFree(o)){ drag={mode:'wire',a:[g.gx,g.gy],b:[g.gx,g.gy],clickPart:p.id,moved:false}; return; }
+      } else {
+        const myPin=o.pins.some(q=>q.part===p.id);
+        const onBoard=o.holes.length>0 || o.pins.some(q=>q.part!==p.id&&isBoardPart(q.part));
+        if (myPin && !onBoard && o.ends.length===0){ drag={mode:'wire',a:[g.gx,g.gy],b:[g.gx,g.gy],clickPart:p.id,moved:false}; return; }
+      }
+    }
+    sel={kind:'part',id:p.id}; startMove(p,w); renderLight(); renderInspector(); renderSteps(); switchTab('insp',true); return;
+  }
+  if (near && o && o.ends.length){ const en=o.ends[0], wi=getWire(en.w); sel={kind:'wire',id:wi.id}; drag={mode:'wend',w:wi,e:en.e,o:wi[en.e].slice(),moved:false}; renderLight(); return; }
+  drag={mode:'pan',sx:e.clientX,sy:e.clientY,tx:view.tx,ty:view.ty,clear:true}; cv.classList.add('panning');
+});
+
+window.addEventListener('pointermove', e=>{
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if (!drag){ if (e.target===cv || cv.contains(e.target)) updateHover(e); return; }
+  if (drag.mode==='pinch'){ if (pointers.size<2) return; const [a,b]=[...pointers.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y), cx=(a.x+b.x)/2, cy=(a.y+b.y)/2; const r=cv.getBoundingClientRect();
+    view.tx+=cx-drag.cx; view.ty+=cy-drag.cy; zoomAt(d/drag.d, cx-r.left, cy-r.top); drag.d=d; drag.cx=cx; drag.cy=cy; return; }
+  if (drag.mode==='pan'){ view.tx=drag.tx+(e.clientX-drag.sx); view.ty=drag.ty+(e.clientY-drag.sy); if(Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy)>3) drag.clear=false; applyView(); return; }
+  if (drag.mode==='palette'){
+    const r=cv.getBoundingClientRect(); const inside=e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
+    if (inside){ const w=toWorld(e); const T=TYPES[drag.type]; const [x0,y0,x1,y1]=T.bbox(T.defaults||{});
+      const p=addPart(drag.type, Math.round((w.x-(x0+x1)/2)/P), Math.round((w.y-(y0+y1)/2)/P));
+      analyze(); sel={kind:'part',id:p.id}; startMove(p,w); drag.moved=true; drag.added=true; renderLight(); }
+    return;
+  }
+  const w=toWorld(e);
+  if (drag.mode==='move'){
+    const dx=Math.round((w.x-drag.start.x)/P), dy=Math.round((w.y-drag.start.y)/P);
+    if (dx||dy) drag.moved=true;
+    for (const it of drag.parts){ it.p.x=it.ox+dx; it.p.y=it.oy+dy; }
+    for (const en of drag.ends){ en.w[en.e]=[en.o[0]+dx,en.o[1]+dy]; }
+    renderLight(); return;
+  }
+  if (drag.mode==='wmove'){
+    const dx=Math.round((w.x-drag.start.x)/P), dy=Math.round((w.y-drag.start.y)/P);
+    if (dx||dy) drag.moved=true; drag.w.a=[drag.a[0]+dx,drag.a[1]+dy]; drag.w.b=[drag.b[0]+dx,drag.b[1]+dy]; renderLight(); return;
+  }
+  const g=gridOf(w);
+  if (drag.mode==='wend'){ drag.w[drag.e]=[g.gx,g.gy]; if(g.gx!==drag.o[0]||g.gy!==drag.o[1]) drag.moved=true; renderLight(); return; }
+  if (drag.mode==='wire'){
+    drag.b=[g.gx,g.gy]; if (g.gx!==drag.a[0]||g.gy!==drag.a[1]) drag.moved=true;
+    preview={a:drag.a,b:drag.b,color:autoColor(drag.a)}; drawOverlay();
+  }
+});
+function endDrag(e){
+  pointers.delete(e.pointerId);
+  if (!drag) return;
+  const d=drag; drag=null; cv.classList.remove('panning');
+  if (d.mode==='pinch'){ return; }
+  if (d.mode==='press'){ if(run){ run.pressed.delete(d.id); updateSim(); } return; }
+  if (d.mode==='pan'){ if (d.clear && sel){ select(null); } return; }
+  if (d.mode==='palette'){ if (d.added){ commit(); } else if (e.type==='pointerup'){ addAtCenter(d.type); } return; }
+  if (d.mode==='move'||d.mode==='wmove'||d.mode==='wend'){ if (d.moved) commit(); else renderLight(); return; }
+  if (d.mode==='wire'){
+    preview=null;
+    if (d.moved){ const wi=addWire(d.a,d.b,autoColor(d.a)); sel={kind:'wire',id:wi.id}; commit(); renderInspector(); }
+    else { sel={kind:'part',id:d.clickPart}; renderLight(); renderInspector(); switchTab('insp',true); }
+  }
+}
+window.addEventListener('pointerup', endDrag);
+window.addEventListener('pointercancel', endDrag);
+cv.addEventListener('wheel', e=>{ e.preventDefault(); const r=cv.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY*0.0015), e.clientX-r.left, e.clientY-r.top); }, {passive:false});
+cv.addEventListener('pointerleave', ()=>{ if(!drag){ hover=null; hideTip(); renderWires(); drawOverlay(); } });
+
+function autoColor(a){
+  const o=M.pts.get(K(a[0],a[1]));
+  if (o){
+    for (const q of o.pins){ const p=M.partById.get(q.part); if (isMCU(p)){ const r=pinsOf(p)[q.i].role; if(r==='gnd') return '#222222'; if(r==='5v'||r==='3v3') return '#d32f2f'; } }
+    const k=kinds(o.root); if (k.gnd) return '#222222'; if (k.v5||k.v33) return '#d32f2f';
+  }
+  return wireColor;
+}
+
+/* ===================== ホバー・ツールチップ ===================== */
+const tip=$('#tip');
+function hideTip(){ tip.hidden=true; }
+function updateHover(e){
+  if (stepMode||run){ return; }
+  const w=toWorld(e), g=gridOf(w); const o=g.d<0.45?M.pts.get(K(g.gx,g.gy)):null;
+  const key=o?o.key:null;
+  if (!o){ if(hover){ hover=null; renderWires(); drawOverlay(); } hideTip(); return; }
+  if (!hover||hover.key!==key){ hover={key,root:o.root}; renderWires(); drawOverlay(); }
+  let html='';
+  for (const q of o.pins){ const p=M.partById.get(q.part), pin=pinsOf(p)[q.i];
+    html += isMCU(p) ? `<div><b>${mcuLabel(p)} ${esc(pin.label)}</b></div>` : `<div><b>${esc(dispName(p))}</b>：${esc(pin.label)}</div>`; }
+  for (const h of o.holes){ const p=M.partById.get(h.part), L=bbLayout(TYPES[p.type].cols)[h.i];
+    html += `<div><b>${esc(L.name.split('（')[0])}</b> ${esc(L.desc)}</div>`; }
+  if (o.ends.length) html += `<div>ジャンパ線がささっています</div>`;
+  const k=kinds(o.root); const tags=[]; if(k.gnd)tags.push('GND'); if(k.v33)tags.push('3.3V'); if(k.v5)tags.push('5V'); k.gpios.forEach(n=>tags.push('GPIO'+n));
+  if (tags.length) html += `<div style="opacity:.8">つながり：${tags.join('・')}</div>`;
+  tip.innerHTML=html; tip.hidden=false;
+  const r=$('#stage').getBoundingClientRect();
+  let x=e.clientX-r.left+14, y=e.clientY-r.top+14;
+  if (x+260>r.width) x=e.clientX-r.left-260; if (y+80>r.height) y=e.clientY-r.top-70;
+  tip.style.left=Math.max(4,x)+'px'; tip.style.top=Math.max(4,y)+'px';
+}
+
+/* ===================== パレット ===================== */
+function buildPalette(){
+  let h='';
+  for (const [cat,label] of CATS){
+    h+=`<div class="pal-group"><h3>${label}</h3>`;
+    for (const [k,T] of Object.entries(TYPES)) if (T.cat===cat)
+      h+=`<button class="pal-item" data-type="${k}" title="クリックで追加・ドラッグで好きな位置に"><i style="background:${T.chip}">${T.icon||''}</i><div><b>${esc(T.name)}</b><small>${esc(T.sub||'')}</small></div></button>`;
+    h+=`</div>`;
+  }
+  $('#palette').innerHTML=h;
+  $('#palette').addEventListener('pointerdown', e=>{
+    const b=e.target.closest('.pal-item'); if(!b||stepMode||run) return; e.preventDefault();
+    drag={mode:'palette',type:b.dataset.type,added:false};
+  });
+  $('#palette').addEventListener('keydown', e=>{ const b=e.target.closest('.pal-item'); if(b&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); addAtCenter(b.dataset.type); } });
+}
+function addAtCenter(type){
+  if (stepMode||run) return;
+  const r=cv.getBoundingClientRect(); const w={x:(r.width/2-view.tx)/view.s, y:(r.height/2-view.ty)/view.s};
+  const T=TYPES[type]; const [x0,y0,x1,y1]=T.bbox(T.defaults||{});
+  const p=addPart(type, Math.round((w.x-(x0+x1)/2)/P), Math.round((w.y-(y0+y1)/2)/P));
+  sel={kind:'part',id:p.id}; commit(); switchTab('insp',true);
+}
+
+/* ===================== サイドパネル ===================== */
+function switchTab(t, soft){
+  if (soft && tab!=='share') return; // チェック・手順を見ている最中は勝手に切り替えない
+  tab=t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  for (const id of ['insp','check','steps','share']) $('#tb-'+id).hidden = id!==t;
+}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
+
+function renderSide(){ renderInspector(); renderChecks(); renderSteps(); renderShare(); }
+
+function renderInspector(){
+  const el=$('#tb-insp');
+  if (sel && sel.kind==='part'){
+    const p=getPart(sel.id); if(!p){ sel=null; return renderInspector(); }
+    const T=TYPES[p.type];
+    let h=`<h2>${esc(dispName(p))}</h2><div class="muted small">${esc(T.sub||'')}</div>`;
+    for (const pr of (T.props||[])) h+=`<div class="field"><label for="pp-${pr.k}">${pr.l}</label><select id="pp-${pr.k}" data-prop="${pr.k}">${pr.opts.map(o=>`<option value="${o.v}" ${String(p.props[pr.k])===String(o.v)?'selected':''}>${o.l}</option>`).join('')}</select></div>`;
+    h+=`<div class="row" style="margin:10px 0"><button class="btn" id="iRot">回転 <kbd>R</kbd></button><button class="btn danger" id="iDel">削除 <kbd>Del</kbd></button></div>`;
+    if (isMCU(p)){
+      h+= p.type==='pi' ? `<h4>ピン配置（上が基板の外側）</h4><div class="muted small">ピンにマウスを重ねると名前が出ます。1番ピンは左下の角です。</div>`
+        : `<h4>ピン配置</h4><div class="muted small">USBが左のとき、下の列が1〜20番、上の列が40〜21番です。ブレッドボードの中央の溝をまたいでさします。</div>`;
+      h+=pinUsage(p);
+    } else if (!T.board){
+      h+=`<h4>ささっている場所</h4><ul class="pinlist">`+pinsOf(p).map(q=>`<li><b>${esc(q.label)}</b><span>${esc(locName(M.pts.get(K(q.gx,q.gy)),p.id))}</span></li>`).join('')+`</ul>`;
+      if (p.type==='button') h+=`<p class="muted small">点線でむすんだ足どうしは、押さなくても中でつながっています。</p>`;
+      h+=`<div class="field"><label for="iNote">手順のメモ（生徒に見せる）</label><textarea id="iNote" placeholder="例：長い足が＋です">${esc(p.note||'')}</textarea></div>`;
+    } else {
+      h+=`<p class="muted small">縦の5つの穴（a〜e、f〜j）と、横の＋−ラインがそれぞれつながっています。穴にマウスを重ねて確かめられます。</p>`;
+    }
+    el.innerHTML=h;
+    el.querySelectorAll('[data-prop]').forEach(s=>s.addEventListener('change',()=>{ const v=s.value; p.props[s.dataset.prop]=isNaN(+v)?v:+v; commit(); }));
+    $('#iRot').onclick=rotateSel; $('#iDel').onclick=deleteSel;
+    const n=$('#iNote'); if(n){ n.oninput=()=>{p.note=n.value;}; n.onchange=()=>commit(); }
+    return;
+  }
+  if (sel && sel.kind==='wire'){
+    const w=getWire(sel.id); if(!w){ sel=null; return renderInspector(); }
+    let h=`<h2>ジャンパ線（${esc(colorName(w.color))}）</h2>`;
+    h+=`<div class="field"><label>色</label><div class="row">${WIRE_COLORS.map(([c,l])=>`<button class="sw ${c===w.color?'on':''}" data-wc="${c}" style="background:${c};width:26px;height:26px" title="${l}" aria-label="${l}"></button>`).join('')}</div></div>`;
+    h+=`<h4>つないでいる場所</h4><ul class="pinlist"><li><b>端A</b><span>${esc(locName(M.pts.get(K(w.a[0],w.a[1]))))}</span></li><li><b>端B</b><span>${esc(locName(M.pts.get(K(w.b[0],w.b[1]))))}</span></li></ul>`;
+    h+=`<p class="muted small">端の丸をドラッグすると、さし直せます。</p>`;
+    h+=`<div class="row" style="margin:10px 0"><button class="btn danger" id="iDel">削除 <kbd>Del</kbd></button></div>`;
+    h+=`<div class="field"><label for="iNote">手順のメモ（生徒に見せる）</label><textarea id="iNote" placeholder="例：GNDは黒い線にそろえよう">${esc(w.note||'')}</textarea></div>`;
+    el.innerHTML=h;
+    el.querySelectorAll('[data-wc]').forEach(b=>b.onclick=()=>{ w.color=b.dataset.wc; commit(); });
+    $('#iDel').onclick=deleteSel;
+    const n=$('#iNote'); n.oninput=()=>{w.note=n.value;}; n.onchange=()=>commit();
+    return;
+  }
+  const nc=S.parts.filter(p=>!TYPES[p.type].board).length;
+  el.innerHTML=`<h2>この回路</h2>
+    <div class="field"><label for="iTitle">回路の名前</label><input id="iTitle" value="${esc(S.title)}" placeholder="例：LEDを点滅させよう"></div>
+    <div class="muted small">部品 ${nc}個 ・ ジャンパ線 ${S.wires.length}本</div>
+    <h4>使い方</h4>
+    <ul class="help">
+      <li>左の一覧をクリックで追加、ドラッグで好きな場所に置けます</li>
+      <li>部品をドラッグすると、穴にぴったりそろいます</li>
+      <li>穴やピンからドラッグすると、ジャンパ線を引けます（GNDは黒、電源は赤に自動で色分け）</li>
+      <li>ブレッドボードを動かすと、ささっている部品もいっしょに動きます</li>
+      <li><kbd>R</kbd> 回転　<kbd>Del</kbd> 削除　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</li>
+      <li>何もないところをドラッグで移動、ホイールで拡大・縮小</li>
+    </ul>`;
+  const t=$('#iTitle'); t.oninput=()=>{S.title=t.value;}; t.onchange=()=>commit();
+}
+function pinUsage(p){
+  const used=pinsOf(p).map((q,i)=>({q,k:kinds(rootT(p,i))})).filter(x=>x.k.terms.length>1&&x.k.terms.some(t=>t.part.id!==p.id));
+  if (!used.length) return `<p class="muted small">まだどのピンも使っていません。</p>`;
+  return `<h4>使っているピン</h4><ul class="pinlist">`+used.map(({q,k})=>{ const others=[...new Set(k.terms.filter(t=>t.part.id!==p.id).map(t=>dispName(t.part)))].join('・'); return `<li><b>${q.num}番 ${esc(q.name)}</b><span>${esc(others)}</span></li>`; }).join('')+`</ul>`;
+}
+
+const lvIcon={error:'×',warn:'!',info:'i',ok:'✓'};
+let lastChecks=[];
+function renderChecks(){
+  const res=runChecks(); lastChecks=res;
+  const c={error:0,warn:0,info:0,ok:0}; res.forEach(r=>c[r.lv]++);
+  $('#badge').innerHTML = c.error?`<span class="bd e">${c.error}</span>`: c.warn?`<span class="bd w">${c.warn}</span>`:'';
+  let h=`<h2>配線チェック</h2><div class="muted small">ルールにもとづいて配線を調べます。動作を保証するものではありません。</div>`;
+  h+=`<div class="summary">`+(c.error?`<span class="pill e">エラー ${c.error}</span>`:'')+(c.warn?`<span class="pill w">注意 ${c.warn}</span>`:'')+(c.info?`<span class="pill i">メモ ${c.info}</span>`:'')+(c.ok?`<span class="pill o">OK ${c.ok}</span>`:'')+`</div>`;
+  if (!c.error&&!c.warn&&S.parts.length) h+=`<p class="small" style="color:var(--ok);font-weight:500">問題は見つかりませんでした。</p>`;
+  h+=`<ul class="res">`+res.map((r,i)=>`<li class="${r.lv}" data-ci="${i}"><span class="ic">${lvIcon[r.lv]}</span><span>${esc(r.msg)}</span></li>`).join('')+`</ul>`;
+  h+=`<h4>お手本と比べる</h4>`;
+  if (answer){
+    const n=(answer.p||[]).filter(a=>!TYPES[a[1]]?.board).length;
+    h+=`<div class="small">お手本：<b>${esc(answer.t||'名前なし')}</b>（部品${n}個・線${(answer.w||[]).length}本）</div>`;
+    h+=`<div class="row" style="margin:8px 0"><button class="btn pri" id="cCompare">お手本と比べる</button><button class="btn" id="cClearAns">お手本を外す</button></div><div id="cmpOut"></div>`;
+  } else h+=`<p class="muted small">先生が作ったお手本コードを貼り付けると、つながり方が同じかどうか判定できます。ブレッドボードのどの列を使ったかは問いません。</p>`;
+  h+=`<div class="field"><label for="cAnsCode">お手本コード</label><textarea class="code" id="cAnsCode" placeholder="HL1. ではじまるコードを貼り付け"></textarea></div><div class="row"><button class="btn" id="cSetAns">お手本として登録</button><button class="btn" id="cSelfAns" title="先生用">今の回路をお手本にする</button></div>`;
+  $('#tb-check').innerHTML=h;
+  $('#tb-check').querySelectorAll('[data-ci]').forEach(li=>li.onclick=()=>flash(res[+li.dataset.ci].ids));
+  $('#cSetAns').onclick=()=>{ try{ answer=fromCode($('#cAnsCode').value); store.set('haisenlab.answer',JSON.stringify(answer)); renderChecks(); toast('お手本を登録しました'); }catch(err){ toast(err.message); } };
+  $('#cSelfAns').onclick=()=>{ answer=serialize(); store.set('haisenlab.answer',JSON.stringify(answer)); renderChecks(); toast('今の回路をお手本にしました'); };
+  if (answer){ $('#cCompare').onclick=showCompare; $('#cClearAns').onclick=()=>{ answer=null; store.set('haisenlab.answer',''); renderChecks(); }; }
+}
+function showCompare(){
+  const r=compareAnswer(); const pct=r.total?Math.round(r.match/r.total*100):0;
+  const tag=l=>l?l.map(x=>`<span class="tag">${esc(x)}</span>`).join(''):'<span class="muted">なし</span>';
+  let h=`<div class="cmp-row"><b>${r.match} / ${r.total}</b> のつながりがお手本と同じです<div class="meter"><i style="width:${pct}%"></i></div>`;
+  h+= (r.match===r.total && !r.pairs.length) ? `<b style="color:var(--ok)">完全に一致しました！</b>` : `ちがうところを下に出しています。`;
+  h+=`</div>`;
+  for (const [m,e] of r.pairs){
+    h+=`<div class="cmp-row">`;
+    h+= m ? `<div><b>お手本</b>：${tag(m)} がつながる</div>` : `<div><b>お手本</b>：このつながりはありません</div>`;
+    h+= e ? `<div><b>あなた</b>：${tag(e)} がつながっている</div>` : `<div><b>あなた</b>：このつながりがありません</div>`;
+    h+=`</div>`;
+  }
+  $('#cmpOut').innerHTML=h;
+}
+function flash(ids){
+  flashIds=new Set(ids); renderLight();
+  setTimeout(()=>{ flashIds=new Set(); renderLight(); },2900);
+}
+
+function renderSteps(){
+  const el=$('#tb-steps');
+  let h=`<h2>組み立て手順</h2><div class="muted small">部品や線を置いた順番が手順になります。↑↓で並べかえ、メモは「部品」タブで書けます。</div>`;
+  h+=`<div class="row" style="margin:10px 0"><button class="btn pri" id="stGo" ${S.order.length?'':'disabled'}>手順モードで見る</button></div>`;
+  h+=`<ul class="steps"><li style="cursor:default"><span class="n">0</span><span>ラズパイとブレッドボードを用意する<span class="nt">電源は最後に入れます</span></span><span></span></li>`;
+  S.order.forEach((id,i)=>{
+    const on=(sel&&sel.id===id)||(stepMode&&stepMode.i===i);
+    const note=(getPart(id)||getWire(id)||{}).note;
+    h+=`<li class="${on?'on':''}" data-st="${i}"><span class="n">${i+1}</span><span>${esc(stepText(id))}${note?`<span class="nt">${esc(note)}</span>`:''}</span><span class="mv"><button data-up="${i}" aria-label="上へ" ${i?'':'disabled'}>▲</button><button data-dn="${i}" aria-label="下へ" ${i<S.order.length-1?'':'disabled'}>▼</button></span></li>`;
+  });
+  h+=`</ul>`;
+  el.innerHTML=h;
+  $('#stGo').onclick=()=>enterSteps(0);
+  el.querySelectorAll('[data-st]').forEach(li=>li.onclick=e=>{
+    if (e.target.closest('button')) return; const i=+li.dataset.st;
+    if (stepMode){ stepMode.i=i; renderStepMode(); } else { const id=S.order[i]; sel={kind:getPart(id)?'part':'wire',id}; renderLight(); renderSteps(); }
+  });
+  el.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; [S.order[i-1],S.order[i]]=[S.order[i],S.order[i-1]]; commit(); });
+  el.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; [S.order[i+1],S.order[i]]=[S.order[i],S.order[i+1]]; commit(); });
+}
+function stepClasses(){ const m={}; S.order.forEach((id,i)=>{ m[id]= i<stepMode.i?'past': i===stepMode.i?'cur':'fut'; }); return m; }
+function enterSteps(i){
+  if (!S.order.length) return;
+  if (run) exitRun();
+  stepMode={i:Math.min(i,S.order.length-1)}; sel=null; hover=null; hideTip();
+  $('#bSteps').classList.add('on'); $('#stepbar').hidden=false; $('#zoomer').hidden=true; $('#hint').hidden=true;
+  renderStepMode();
+}
+function exitSteps(){ stepMode=null; $('#bSteps').classList.remove('on'); $('#stepbar').hidden=true; $('#zoomer').hidden=false; renderAll(); renderSteps(); }
+function renderStepMode(){
+  const i=stepMode.i, id=S.order[i]; const it=getPart(id)||getWire(id);
+  $('#sbNo').textContent=i+1; $('#sbOf').textContent=`/ ${S.order.length}`;
+  $('#sbTxt').innerHTML=esc(stepText(id))+(it&&it.note?`<small>${esc(it.note)}</small>`:'');
+  $('#sbPrev').disabled=i===0; $('#sbNext').textContent= i===S.order.length-1?'完成！':'次へ ▶'; $('#sbNext').disabled=i===S.order.length-1;
+  renderAll(); renderSteps();
+}
+$('#sbPrev').onclick=()=>{ if(stepMode.i>0){ stepMode.i--; renderStepMode(); } };
+$('#sbNext').onclick=()=>{ if(stepMode.i<S.order.length-1){ stepMode.i++; renderStepMode(); } };
+$('#sbExit').onclick=exitSteps;
+$('#bSteps').onclick=()=>{ stepMode?exitSteps():enterSteps(0); };
+
+function renderShare(){
+  const el=$('#tb-share'); if (tab!=='share' && el.dataset.ready) return;
+  el.dataset.ready='1';
+  const code=toCode(serialize());
+  const canLink = window.self===window.top && /^https?:$/.test(location.protocol);
+  el.innerHTML=`<h2>保存・共有</h2><div class="muted small">作業はこのブラウザに自動で保存されます。ほかの人に配るときは共有コードを使います。</div>
+    <h4>共有コード</h4>
+    <div class="muted small">Google Classroomなどに貼って配れます。生徒は「コードを読み込む」に貼るだけで同じ回路を開けます。</div>
+    <div class="field"><textarea class="code" id="shCode" readonly>${esc(code)}</textarea></div>
+    <div class="row"><button class="btn pri" id="shCopy">コードをコピー</button>${canLink?'<button class="btn" id="shLink">共有リンクをコピー</button>':''}<span class="muted small">${code.length}文字</span></div>
+    <h4>コードを読み込む</h4>
+    <div class="field"><textarea class="code" id="shIn" placeholder="HL1. ではじまるコードを貼り付け"></textarea></div>
+    <div class="row"><button class="btn" id="shLoad">読み込む</button></div>
+    <h4>ファイル</h4>
+    <div class="row"><button class="btn" id="shSave">ファイルに保存（.json）</button><label class="btn" for="shFile" style="cursor:pointer">ファイルを開く</label><input type="file" id="shFile" accept=".json,application/json,text/plain" hidden></div>
+    <p class="muted small">ファイル保存がはたらかない環境では、共有コードをコピーして保存してください。</p>
+    <h4>新しく始める</h4>
+    <div class="row"><button class="btn" id="shSample">サンプル（ラズパイ）</button><button class="btn" id="shSampleP">サンプル（Pico W）</button><button class="btn danger" id="shNew">回路をすべて消す</button></div>`;
+  $('#shCopy').onclick=()=>copyText($('#shCode'));
+  if (canLink) $('#shLink').onclick=()=>{ const ta=document.createElement('textarea'); ta.value=location.origin+location.pathname+'?c='+encodeURIComponent(code); copyText(ta); };
+  $('#shLoad').onclick=()=>{ try{ const o=fromCode($('#shIn').value); if(stepMode) exitSteps(); loadState(deserialize(o)); commit(); fitView(); toast('読み込みました'); }catch(err){ toast(err.message); } };
+  $('#shSave').onclick=async()=>{
+    const name=(S.title||'haisen').replace(/[\\\/:*?"<>|]/g,'_')+'.json';
+    const data=JSON.stringify(serialize(),null,1);
+    let dl=null; try{ dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; }catch(e){ dl=null; }
+    if (dl){ try{ await dl.save({filename:name, data}); toast('保存しました'); }catch(err){ if(err&&err.code!=='declined') toast('ファイル保存ができませんでした。共有コードを使ってください'); } return; }
+    try{ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }catch(e){ toast('ファイル保存ができない環境です。共有コードを使ってください'); }
+  };
+  $('#shFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ try{ const txt=String(fr.result); const o=txt.trim().startsWith('{')?JSON.parse(txt):fromCode(txt); if(stepMode) exitSteps(); loadState(deserialize(o)); commit(); fitView(); toast('開きました'); }catch(err){ toast('このファイルは読み込めませんでした'); } }; fr.readAsText(f); };
+  $('#shSample').onclick=()=>{ if(stepMode) exitSteps(); loadState(sample()); commit(); fitView(); toast('サンプルを開きました'); };
+  $('#shSampleP').onclick=()=>{ if(stepMode) exitSteps(); loadState(samplePico()); commit(); fitView(); toast('Pico Wのサンプルを開きました'); };
+  const nb=$('#shNew'); nb.onclick=()=>{ if(!nb.classList.contains('armed')){ nb.classList.add('armed'); nb.textContent='もう一度押すと消えます'; setTimeout(()=>{ nb.classList.remove('armed'); nb.textContent='回路をすべて消す'; },3000); return; }
+    if(stepMode) exitSteps(); loadState({title:'',parts:[],wires:[],order:[],code:''}); commit(); fitView(); toast('新しい回路にしました'); };
+}
+document.querySelector('[data-tab="share"]').addEventListener('click',()=>{ delete $('#tb-share').dataset.ready; renderShare(); });
+function copyText(ta){
+  const done=()=>toast('コピーしました');
+  if (navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(ta.value).then(done).catch(()=>{ ta.select(); toast('コードを選択しました。Ctrl+Cでコピーしてください'); }); }
+  else { ta.select(); toast('コードを選択しました。Ctrl+Cでコピーしてください'); }
+}
+let toastT;
+function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,2600); }
+
+/* ===================== ツールバー・キー ===================== */
+function rotateSel(){ if(!sel||sel.kind!=='part'||stepMode) return; const p=getPart(sel.id); p.rot=(p.rot+1)%4; commit(); }
+function deleteSel(){
+  if(!sel||stepMode) return;
+  if (sel.kind==='part') S.parts=S.parts.filter(p=>p.id!==sel.id); else S.wires=S.wires.filter(w=>w.id!==sel.id);
+  S.order=S.order.filter(id=>id!==sel.id); sel=null; commit();
+}
+$('#bUndo').onclick=undo; $('#bRedo').onclick=redo; $('#bRot').onclick=rotateSel; $('#bDel').onclick=deleteSel;
+$('#bLabels').onclick=()=>{ showLabels=!showLabels; $('#bLabels').classList.toggle('on',showLabels); renderAll(); };
+$('#bZoomIn').onclick=()=>{ const r=cv.getBoundingClientRect(); zoomAt(1.25,r.width/2,r.height/2); };
+$('#bZoomOut').onclick=()=>{ const r=cv.getBoundingClientRect(); zoomAt(0.8,r.width/2,r.height/2); };
+$('#bFit').onclick=fitView;
+$('#hintX').onclick=()=>{ $('#hint').hidden=true; store.set('haisenlab.hint','0'); };
+function buildSwatches(){
+  const box=$('#swatches');
+  box.innerHTML='<small>線の色</small>'+WIRE_COLORS.map(([c,l])=>`<button class="sw ${c===wireColor?'on':''}" data-c="${c}" style="background:${c}" title="${l}" aria-label="${l}"></button>`).join('');
+  box.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{ wireColor=b.dataset.c; if(sel&&sel.kind==='wire'){ getWire(sel.id).color=wireColor; commit(); } buildSwatches(); });
+}
+window.addEventListener('keydown', e=>{
+  const tg=e.target; if (tg && (tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.tagName==='SELECT')) return;
+  if (run){ if(e.key==='Escape') exitRun(); return; }
+  if (stepMode){ if(e.key==='ArrowRight') $('#sbNext').click(); else if(e.key==='ArrowLeft') $('#sbPrev').click(); else if(e.key==='Escape') exitSteps(); return; }
+  if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
+  if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
+  if (e.key==='r'||e.key==='R'){ rotateSel(); return; }
+  if (e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); return; }
+  if (e.key==='Escape'){ select(null); return; }
+  const arrows={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
+  if (arrows[e.key] && sel){ e.preventDefault(); const [dx,dy]=arrows[e.key];
+    if (sel.kind==='part'){ const p=getPart(sel.id); startMove(p,{x:0,y:0}); for(const it of drag.parts){it.p.x+=dx;it.p.y+=dy;} for(const en of drag.ends) en.w[en.e]=[en.o[0]+dx,en.o[1]+dy]; drag=null; }
+    else { const w=getWire(sel.id); w.a=[w.a[0]+dx,w.a[1]+dy]; w.b=[w.b[0]+dx,w.b[1]+dy]; }
+    commit(); }
+});
+
+/* ===================== 動かしてみる（シミュレーション） ===================== */
+let run=null, simS=null, audio=null, buzz=null, blinkTimer=null;
+const VF={red:2.0,yellow:2.1,green:2.2,blue:3.0,white:3.0};
+const SENSOR_ROLES=['dout','onewire','echo','aout'];
+
+function gpioUses(){
+  const pi=mcuPart(); if(!pi) return [];
+  const list=[];
+  pinsOf(pi).forEach((q,i)=>{
+    if (q.role!=='gpio') return;
+    const r=rootT(pi,i), n=M.nets.get(r);
+    const others=n.terms.filter(t=>!isMCU(t.part));
+    if (!others.length) return;
+    const viaRes=viaR(r).flatMap(x=>(M.nets.get(x)?.terms||[]).filter(t=>!isMCU(t.part)&&t.part.type!=='resistor'));
+    const all=[...others.filter(t=>t.part.type!=='resistor'),...viaRes];
+    list.push({gpio:q.gpio,num:q.num,terms:all,desc:[...new Set(all.map(t=>dispName(t.part)))].join('・')||'抵抗'});
+  });
+  return list;
+}
+function defaultMode(u){
+  const rs=u.terms;
+  if (rs.some(t=>t.pin.role==='sw')) return 'in';
+  if (rs.some(t=>t.pin.role==='pwm')) return 'pwm';
+  if (rs.some(t=>t.pin.role==='sda'||t.pin.role==='scl')) return 'i2c';
+  if (rs.some(t=>SENSOR_ROLES.includes(t.pin.role)||t.part.type==='hcsr04')) return 'sensor';
+  return 'out';
+}
+function initRun(){
+  const uses=gpioUses(), g={};
+  for (const u of uses){
+    const c={mode:defaultMode(u),pull:'up',follow:null,angle:90};
+    if (c.mode==='in'){ const bt=u.terms.find(t=>t.pin.role==='sw'); if(bt){ const other=(bt.i===0||bt.i===2)?1:0; const ko=kinds(rootT(bt.part,other)); c.pull=ko.v33&&!ko.gnd?'down':'up'; } }
+    g[u.gpio]=c;
+  }
+  const inputs=uses.filter(u=>g[u.gpio].mode==='in').map(u=>u.gpio);
+  for (const u of uses){ const c=g[u.gpio]; if (c.mode==='out'){ if(inputs.length){ c.mode='follow'; c.follow=inputs[0]; } else c.mode='blink'; } }
+  return {g,uses,inputs,view:'easy',onboard:false,oledLines:null,env:{temp:23.5,hum:62,soil:45,lux:850,water:18.5,dist:32},text:['HAISEN LAB','HELLO!'],sound:true,pressed:new Set(),phase:true,relayPrev:{}};
+}
+function simulate(){
+  const uf2=new UF(); const F=r=>uf2.find(r);
+  for (const id of run.pressed){ const p=getPart(id); if(p) uf2.union(rootT(p,0),rootT(p,1)); }
+  const pi=mcuPart();
+  const piPins=pi?pinsOf(pi).map((q,i)=>({q,r:F(rootT(pi,i))})):[];
+  const res=S.parts.filter(p=>p.type==='resistor').map(p=>[F(rootT(p,0)),F(rootT(p,1)),p.props.ohm]);
+  function solve(outVals){
+    const strong=new Map(), pwm=new Map(), dutyM=new Map();
+    const add=(n,v)=>{ if(!strong.has(n)) strong.set(n,new Set()); strong.get(n).add(v); };
+    for (const {q,r} of piPins){
+      if (q.role==='3v3') add(r,3.3); else if (q.role==='5v') add(r,5); else if (q.role==='gnd') add(r,0);
+      else if (q.role==='gpio'){ const v=outVals[q.gpio]; const c=run.g[q.gpio];
+        if (v==='pwm') pwm.set(r,c.angle);
+        else if (v==='duty'){ if ((c.freq||1000)<=100){ const ms=c.duty*1000/(c.freq||50); if(ms>0.2) pwm.set(r,Math.max(0,Math.min(180,Math.round((ms-0.5)/2*180)))); else add(r,0); }
+          else if (c.duty<=0.001) add(r,0); else { add(r,3.3); dutyM.set(r,Math.min(1,c.duty)); } }
+        else if (v!==undefined) add(r,v); }
+    }
+    const shorts=new Set(); for (const [n,s2] of strong) if (s2.size>1) shorts.add(n);
+    const st=n=>{ const x=strong.get(n); return x&&x.size===1?[...x][0]:undefined; };
+    const pulls=new Map();
+    for (const {q,r} of piPins) if (q.role==='gpio'){ const c=run.g[q.gpio]; if(c&&c.mode==='in'&&c.pull!=='none') pulls.set(r,c.pull==='up'?3.3:0); }
+    const level=n=>{
+      if (shorts.has(n)) return {short:true};
+      const s0=st(n); if (s0!==undefined) return {v:s0,strong:true,R:0,duty:dutyM.get(n)};
+      if (pwm.has(n)) return {pwm:pwm.get(n)};
+      let best=null;
+      for (const [a,b,o] of res){ const other=a===n?b:(b===n?a:null); if(other===null||other===n||shorts.has(other)) continue; const ov=st(other); if(ov!==undefined&&(!best||o<best.R)) best={v:ov,R:o,duty:dutyM.get(other)}; }
+      if (best) return best;
+      if (pulls.has(n)) return {v:pulls.get(n),R:50000,pull:true};
+      return {};
+    };
+    return {level,shorts};
+  }
+  const outVals={};
+  for (const [k,c] of Object.entries(run.g)){ if(c.mode==='high')outVals[k]=3.3; else if(c.mode==='low')outVals[k]=0; else if(c.mode==='blink')outVals[k]=run.phase?3.3:0; else if(c.mode==='pwm')outVals[k]='pwm'; else if(c.mode==='duty')outVals[k]='duty'; }
+  let sol=solve(outVals);
+  const pinOf=g=>piPins.find(x=>x.q.gpio===+g);
+  const pressedIn=(so,g)=>{ const c=run.g[g], pp=pinOf(g); if(!c||!pp) return false; const L=so.level(pp.r); if(L.v===undefined) return false; return c.pull==='up'? L.v<1.6 : L.v>1.6; };
+  let fol=false;
+  for (const [k,c] of Object.entries(run.g)) if (c.mode==='follow'){ fol=true; outVals[k]=(c.follow!=null&&pressedIn(sol,c.follow))?3.3:0; }
+  if (fol) sol=solve(outVals);
+  const lv=(p,i)=>sol.level(F(rootT(p,i)));
+  const fx=new Map(), alerts=[], gl={}, pinV={};
+  for (const {q,r} of piPins) if (q.role==='gpio') pinV[q.gpio]=sol.level(r);
+  for (const {q,r} of piPins) if (q.role==='gpio' && run.g[q.gpio]){
+    const c=run.g[q.gpio], L=sol.level(r);
+    let o;
+    if (c.mode==='pwm') o={t:'PWM '+c.angle+'°',c:'pwm'};
+    else if (c.mode==='duty') o={t:(c.freq||1000)<=100?'PWM 50Hz':'PWM '+Math.round(c.duty*100)+'%',c:'pwm'};
+    else if (c.mode==='i2c') o={t:'I2C',c:'pwm'};
+    else if (c.mode==='sensor') o={t:'センサー',c:'pwm'};
+    else if (L.short) o={t:'ショート',c:'err'};
+    else if (L.v===undefined) o={t:'不定',c:'na'};
+    else o= L.v>1.6?{t:'HIGH',c:'hi'}:{t:'LOW',c:'lo'};
+    if (c.mode==='in'){ o.pressed=pressedIn(sol,q.gpio); if (L.v===undefined) alerts.push(['warn',`${GN(q.gpio)}：入力が不定です（フローティング）。プルアップかプルダウンを選びましょう`]); }
+    gl[q.gpio]=o;
+  }
+  if (sol.shorts.size) alerts.push(['error','ショートしています！ 電源やHIGHのGPIOが、GNDやLOWのGPIOと直接つながっています']);
+  const pinIdx=(p,role)=>pinsOf(p).findIndex(q=>q.role===role);
+  const powered=p=>{ let v=0, g=false; pinsOf(p).forEach((q,i)=>{ const L=lv(p,i); if((q.role==='vcc'||q.role==='vcc5')&&L.strong) v=L.v; if(q.role==='gnd'&&L.strong&&L.v===0) g=true; }); return g&&v>=3?v:0; };
+  const mk=pi&&pi.type==='pico'?'pico':'pi';
+  const i2cOk=p=>kinds(rootT(p,pinIdx(p,'sda'))).gpios.some(g=>I2C_SDA[mk].includes(g))&&kinds(rootT(p,pinIdx(p,'scl'))).gpios.some(g=>I2C_SCL[mk].includes(g));
+  const sigGpio=(p,role)=>{ const i=pinIdx(p,role); if(i<0) return false; const r=rootT(p,i); return kinds(r).gpios.length>0||viaR(r).some(x=>kinds(x).gpios.length>0); };
+  const E=run.env;
+  for (const p of S.parts){
+    const nm=dispName(p);
+    switch(p.type){
+      case 'led': { const a=lv(p,0), k=lv(p,1); let o=0, burnt=false;
+        if (a.v!==undefined&&k.v!==undefined){ const d=a.v-k.v, vf=VF[p.props.color]||2;
+          if (d>=vf){ if (a.strong&&k.strong){ burnt=true; alerts.push(['error',`${nm}：抵抗がないので電流が流れすぎて、壊れてしまいました（シミュレーション）`]); }
+            else { const I=(d-vf)/((a.R||0)+(k.R||0)); if (I>0.0002) o=Math.min(1,0.3+I/0.012)*(a.duty!==undefined?Math.max(0.08,a.duty):1); if (I>0.016) alerts.push(['warn',`${nm}：電流が約${Math.round(I*1000)}mAです。GPIOには大きすぎるので、抵抗を大きくしましょう`]); } }
+          else if (d>1.5) alerts.push(['info',`${nm}：電圧が足りずに暗い、または光りません（青・白のLEDは約3Vが必要）`]); }
+        fx.set(p.id,{o,burnt}); break; }
+      case 'buzzer': { const a=lv(p,0), k=lv(p,1); fx.set(p.id,{on:a.v!==undefined&&k.v!==undefined&&a.v-k.v>=2.5}); break; }
+      case 'button': fx.set(p.id,{pressed:run.pressed.has(p.id)}); break;
+      case 'relay': { const pw=powered(p), L=lv(p,pinIdx(p,'din')); const hi=L.v!==undefined&&L.v>1.6, lo=L.v!==undefined&&L.v<1.6;
+        const on=pw>0&&(p.props.trig==='low'?lo:hi); fx.set(p.id,{on,tag:!pw?'電源なし':on?'ON：NOとCOMがつながる':'OFF'}); break; }
+      case 'servo': { const pw=powered(p), L=lv(p,pinIdx(p,'pwm'));
+        fx.set(p.id,{angle:pw&&L.pwm!==undefined?L.pwm:null,tag:!pw?'電源なし':L.pwm!==undefined?`${L.pwm}°`:'PWMで角度を指定'}); break; }
+      case 'dht22': { const pw=powered(p), s1=sigGpio(p,'dout'); fx.set(p.id,{ok:!!(pw&&s1),tag:!pw?'電源なし':s1?`${E.temp.toFixed(1)}℃　${Math.round(E.hum)}%`:'OUTをGPIOへ'}); break; }
+      case 'soil': { const pw=powered(p); const v=(2.8-E.soil/100*1.6)*(pw>=4.5?1.5:1); p._aout=pw?v:null; fx.set(p.id,{ok:!!pw,tag:pw?`AOUT ${v.toFixed(2)}V（水分${Math.round(E.soil)}%）`:'電源なし'}); break; }
+      case 'bh1750': { const pw=powered(p), ok=!!(pw&&i2cOk(p)); fx.set(p.id,{ok,tag:!pw?'電源なし':ok?`${Math.round(E.lux)} lx`:'I2Cの配線を確認'}); break; }
+      case 'ds18b20': { const pw=powered(p), r=rootT(p,pinIdx(p,'onewire')); const g=kinds(r).gpios.length>0, pu=viaR(r).some(x=>kinds(x).v33);
+        fx.set(p.id,{ok:!!(pw&&g&&pu),tag:!pw?'電源なし':!g?'DATAをGPIOへ':!pu?'読めない（プルアップ抵抗なし）':`${E.water.toFixed(1)}℃`}); break; }
+      case 'hcsr04': { const pw=powered(p), ok=pw>=4.5&&sigGpio(p,'din')&&sigGpio(p,'echo');
+        fx.set(p.id,{ok,tag:!pw?'電源なし':pw<4.5?'5Vが必要':ok?`${Math.round(E.dist)} cm`:'TrigとEchoをGPIOへ'}); break; }
+      case 'lcd': case 'oled': { const pw=powered(p); fx.set(p.id,{pw,ok:!!(pw&&i2cOk(p))}); break; }
+    }
+  }
+  return {fx,alerts,gl,pinV};
+}
+
+function fxSVG(p){
+  const d=run&&simS?simS.fx.get(p.id):null, T=TYPES[p.type], rot=p.rot||0;
+  const bubble=(txt,ok)=>{ const [x0,y0,x1]=T.bbox(p.props); const cx=(x0+x1)/2; const w=[...txt].reduce((s2,c)=>s2+(c.charCodeAt(0)>255?12.5:7.4),0)+20;
+    return `<g transform="translate(${cx} ${y0-18}) rotate(${-rot*90})"><rect x="${-w/2}" y="-13" width="${w}" height="24" rx="12" class="bub ${ok?'ok':'ng'}"/><text x="0" y="4" text-anchor="middle" class="bubt">${esc(txt)}</text></g>`; };
+  switch(p.type){
+    case 'pi': case 'pico': { if(!run||!simS) return ''; let s='';
+      if (p.type==='pico' && run.onboard) s+=`<circle cx="16" cy="29" r="16" fill="#5dff7a" opacity=".8" filter="url(#glowf)"/><rect x="10" y="26" width="12" height="7" rx="1" fill="#eaffea"/>`;
+      for (const q of (p.type==='pico'?PICO_PINS:PI_PINS)){ const g=q.role==='gpio'?simS.gl[q.gpio]:null; if(!g) continue;
+        const col={hi:'#e53935',lo:'#2f62c9',na:'#8a8f93',pwm:'#8e44ad',err:'#ff1f1f'}[g.c];
+        s+=`<circle cx="${q.x*P}" cy="${q.y*P}" r="8.5" fill="${col}" stroke="#fff" stroke-width="1.5"/><text x="${q.x*P}" y="${q.y*P+3.5}" text-anchor="middle" class="pibadge">${{hi:'H',lo:'L',na:'?',err:'!',pwm:'~'}[g.c]}</text>`; }
+      return s; }
+    case 'led': { if(!d) return ''; const c=LED_COLORS[p.props.color]?.c||'#e53935';
+      if (d.burnt) return `<path d="M-2 -24 L-2 -42 A12 12 0 0 1 22 -42 L22 -24 Z" fill="#333" opacity=".9"/><text x="10" y="-29" text-anchor="middle" class="bubt">×</text>`;
+      if (!d.o) return '';
+      return `<circle cx="10" cy="-36" r="30" fill="${c}" opacity="${(d.o*0.8).toFixed(2)}" filter="url(#glowf)"/><path d="M-2 -24 L-2 -42 A12 12 0 0 1 22 -42 L22 -24 Z" fill="#fff" opacity="${(d.o*0.6).toFixed(2)}"/>`; }
+    case 'button': { if(!run) return ''; const pr=d&&d.pressed;
+      return (pr?`<circle cx="20" cy="30" r="12" fill="#000" stroke="#ff9a3c" stroke-width="3"/>`:'')+`<g transform="translate(20 -16) rotate(${-rot*90})"><rect x="-24" y="-11" width="48" height="20" rx="10" class="bub ${pr?'ok':'tap'}"/><text x="0" y="4" text-anchor="middle" class="bubt">${pr?'押し中':'押す'}</text></g>`; }
+    case 'buzzer': if(!d||!d.on) return ''; return `<g class="ringfx"><circle cx="30" cy="0" r="34" fill="none" stroke="#ff9a3c" stroke-width="3"/><circle cx="30" cy="0" r="44" fill="none" stroke="#ff9a3c" stroke-width="2" opacity=".6"/></g>`+bubble('ピー！',true);
+    case 'relay': { if(!d) return ''; return (d.on?`<circle cx="10" cy="-84" r="10" fill="#ff3b3b" filter="url(#glowf)"/><circle cx="10" cy="-84" r="5" fill="#ffd6d6"/>`:'')+bubble(d.tag,d.on); }
+    case 'servo': { const a=d&&d.angle!=null?d.angle:90;
+      return `<g transform="rotate(${a-90} -6 -196)"><rect x="-40" y="-205" width="68" height="16" rx="8" fill="#f4f4f4" stroke="#bbb"/><circle cx="-6" cy="-197" r="4" fill="#bbb"/></g>`+(d?bubble(d.tag,d.angle!=null):''); }
+    case 'lcd': {
+      if (!run) return `<text x="56" y="-206" class="lcdt">HAISEN LAB</text><text x="56" y="-152" class="lcdt">TEMP 23.4C</text>`;
+      if (!d||!d.pw) return `<rect x="36" y="-258" width="508" height="124" fill="#0c1426" opacity=".92"/>`+bubble('電源なし',false);
+      if (!d.ok){ let s=''; for(let i=0;i<16;i++) s+=`<rect x="${44+i*31}" y="-250" width="26" height="50" fill="#e8eeff" opacity=".85"/>`; return s+bubble('I2Cの配線を確認（■が並ぶのは初期化前のしるし）',false); }
+      return `<text x="56" y="-206" class="lcdt">${esc((run.text[0]||'').slice(0,16))}</text><text x="56" y="-152" class="lcdt">${esc((run.text[1]||'').slice(0,16))}</text>`; }
+    case 'oled': {
+      if (!run) return `<text x="30" y="-140" text-anchor="middle" class="oledt" style="font-size:22px">OLED</text><text x="30" y="-108" text-anchor="middle" class="oledt" style="font-size:13px">128 x 64</text>`;
+      if (!d||!d.ok) return bubble(d&&d.pw?'I2Cの配線を確認':'電源なし',false);
+      if (run.oledLines) return run.oledLines.slice(0,8).map((t,i)=>`<text x="-56" y="${-182+i*17}" class="oledt" style="font-size:14px">${esc(String(t).slice(0,21))}</text>`).join('');
+      return `<text x="-50" y="-150" class="oledt">${esc((run.text[0]||'').slice(0,16))}</text><text x="-50" y="-115" class="oledt">${esc((run.text[1]||'').slice(0,16))}</text>`; }
+    case 'dht22': case 'soil': case 'bh1750': case 'ds18b20': case 'hcsr04': return d?bubble(d.tag,d.ok):'';
+  }
+  return '';
+}
+
+function ensureAudio(){ try{ if(!audio) audio=new (window.AudioContext||window.webkitAudioContext)(); if(audio.state==='suspended') audio.resume(); }catch(e){ audio=null; } }
+function setBuzz(on){
+  if (!audio||!run||!run.sound) on=false;
+  if (on&&!buzz){ try{ const o=audio.createOscillator(), g=audio.createGain(); o.type='square'; o.frequency.value=2300; g.gain.value=0.03; o.connect(g); g.connect(audio.destination); o.start(); buzz=o; }catch(e){} }
+  else if (!on&&buzz){ try{ buzz.stop(); }catch(e){} buzz=null; }
+}
+function relayClick(){
+  if (!audio||!run||!run.sound) return;
+  try{ const n=Math.floor(audio.sampleRate*0.02), b=audio.createBuffer(1,n,audio.sampleRate), d=b.getChannelData(0);
+    for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+    const s=audio.createBufferSource(), g=audio.createGain(); g.gain.value=0.25; s.buffer=b; s.connect(g); g.connect(audio.destination); s.start(); }catch(e){}
+}
+function updateSim(){
+  if (!run) return;
+  simS=simulate(); syncParts(); updateRunPanel();
+  let bz=false; for (const p of S.parts){ const d=simS.fx.get(p.id); if(p.type==='buzzer'&&d&&d.on) bz=true;
+    if (p.type==='relay'&&d){ if(run.relayPrev[p.id]!==undefined&&run.relayPrev[p.id]!==d.on) relayClick(); run.relayPrev[p.id]=d.on; } }
+  setBuzz(bz);
+}
+function updateRunPanel(){
+  const a=$('#rAlerts'); if (!a||!simS) return;
+  const seen=new Set();
+  a.innerHTML=simS.alerts.filter(x=>{ if(seen.has(x[1])) return false; seen.add(x[1]); return true; }).map(([l,m])=>`<div class="ra ${l}">${esc(m)}</div>`).join('');
+  updateGpList();
+  for (const [g,v] of Object.entries(simS.gl)){ const s=$('#lv'+g); if(s){ s.className='lvl '+v.c; s.textContent=v.t+(v.pressed?'・押された':''); } }
+}
+function renderRun(){
+  const el=$('#runPanel'), R=run;
+  R.inputs=Object.entries(R.g).filter(([,c])=>c.mode==='in').map(([k])=>+k);
+  const pico=isPicoCircuit();
+  let h=`<div class="row" style="justify-content:space-between"><h2>動かしてみる</h2><button class="btn" id="rStop">■ 止める</button></div>
+    <div class="seg" role="tablist"><button data-rv="easy" class="${R.view==='easy'?'on':''}">かんたん設定</button><button data-rv="code" class="${R.view==='code'?'on':''}">${pico?'MicroPython':'Python'}で動かす</button></div>`;
+  if (R.view==='code'){
+    const tpls=TEMPLATES[pico?'pico':'pi'];
+    h+=`<div class="muted small">プログラムを書いて ▶ 実行。ボタンはクリック（タップ）している間だけ押されます。<kbd>Ctrl</kbd>+<kbd>Enter</kbd> でも実行できます。</div>
+      <div class="codebar"><select id="cTpl" aria-label="テンプレート"><option value="">テンプレートを入れる（今のコードは置きかわります）</option>${tpls.map((t,i)=>`<option value="${i}">${esc(t[0])}</option>`).join('')}</select></div>
+      <div class="editor"><div class="ln" id="cLn" aria-hidden="true"></div><textarea id="cCode" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off" aria-label="プログラム"></textarea></div>
+      <div class="codebar"><button class="btn pri" id="cRun">▶ 実行</button><button class="btn" id="cStop">■ 停止</button><span class="muted small" id="cState"></span><button class="btn" id="cClr" style="margin-left:auto">表示を消す</button></div>
+      <div class="console" id="cOut" aria-live="polite"></div>
+      <div id="rAlerts"></div>
+      <h4>GPIOのようす</h4><div id="gpList"></div>`;
+  } else {
+    h+=`<div class="muted small">ボタンはクリック（タップ）している間だけ押されます。下の設定がプログラムの代わりになります。</div><div id="rAlerts"></div>`;
+    if (!R.uses.length) h+=`<p class="muted small" style="margin-top:12px">GPIOにつながっている部品がありません。</p>`;
+    else {
+      h+=`<h4>GPIOの動き</h4>`;
+      for (const u of R.uses){
+        const c=R.g[u.gpio]||(R.g[u.gpio]={mode:'low',pull:'up',angle:90});
+        h+=`<div class="gpio"><div class="gh"><b>${GN(u.gpio)}</b><span class="gd">${u.num}番 → ${esc(u.desc)}</span><span class="lvl" id="lv${u.gpio}"></span></div>`;
+        if (c.mode==='sensor'||c.mode==='i2c') h+=`<div class="muted small">${c.mode==='i2c'?'I2C通信で使います（自動）':'センサーの読み取りに使います（自動）'}</div>`;
+        else {
+          const opts=[['in','入力（ボタンを読む）'],['high','出力：HIGH（ON）'],['low','出力：LOW（OFF）'],['blink','出力：点滅（Lチカ）']];
+          if (R.inputs.some(g=>g!==u.gpio)) opts.push(['follow','出力：ボタンに連動']);
+          opts.push(['pwm','PWM：角度（サーボ）']);
+          h+=`<select data-gm="${u.gpio}" aria-label="${GN(u.gpio)}の動き">${opts.map(([v,l])=>`<option value="${v}" ${c.mode===v?'selected':''}>${l}</option>`).join('')}</select>`;
+          if (c.mode==='in') h+=`<select data-gp="${u.gpio}" aria-label="プル">${[['up','内部プルアップ（押すとLOW）'],['down','内部プルダウン（押すとHIGH）'],['none','プルなし']].map(([v,l])=>`<option value="${v}" ${c.pull===v?'selected':''}>${l}</option>`).join('')}</select>`;
+          if (c.mode==='follow') h+=`<select data-gf="${u.gpio}" aria-label="連動するボタン">${R.inputs.filter(g=>g!==u.gpio).map(g=>`<option value="${g}" ${c.follow===g?'selected':''}>${GN(g)}のボタンを押している間ON</option>`).join('')}</select>`;
+          if (c.mode==='pwm') h+=`<div class="rng"><input type="range" min="0" max="180" step="5" value="${c.angle}" data-ga="${u.gpio}" aria-label="角度"><span id="ga${u.gpio}">${c.angle}°</span></div>`;
+        }
+        h+=`</div>`;
+      }
+    }
+  }
+  const has=t=>S.parts.some(p=>p.type===t);
+  const sl=[];
+  if (has('dht22')) sl.push(['temp','気温','℃',-5,45,0.5],['hum','湿度','%',10,100,1]);
+  if (has('soil')) sl.push(['soil','土壌水分','%',0,100,1]);
+  if (has('bh1750')) sl.push(['lux','明るさ','lx',0,50000,50]);
+  if (has('ds18b20')) sl.push(['water','水温','℃',0,40,0.5]);
+  if (has('hcsr04')) sl.push(['dist','距離','cm',2,400,1]);
+  if (sl.length){ h+=`<h4>まわりの環境（センサーの値）</h4>`; for (const [k,l,un,mn,mx,st] of sl) h+=`<div class="rng"><label for="env-${k}">${l}</label><input type="range" id="env-${k}" min="${mn}" max="${mx}" step="${st}" value="${R.env[k]}" data-env="${k}" data-unit="${un}"><span id="ev-${k}">${R.env[k]}${un}</span></div>`; }
+  if (R.view==='easy' && (has('lcd')||has('oled'))) h+=`<h4>液晶に表示する文字（半角英数）</h4><div class="field"><input id="rT0" maxlength="16" value="${esc(R.text[0])}" aria-label="1行目"><input id="rT1" maxlength="16" value="${esc(R.text[1])}" aria-label="2行目"></div>`;
+  if (has('buzzer')||has('relay')) h+=`<label class="row small" style="margin-top:12px"><input type="checkbox" id="rSound" ${R.sound?'checked':''}> 音を出す（ブザー・リレー）</label>`;
+  if (R.view==='easy') h+=`<h4>しくみ</h4><p class="muted small">LEDは「GPIO → 抵抗 → LED → GND」のように電気の通り道ができて、向きが正しいときだけ光ります。抵抗が大きいほど暗くなります。ピンの H／L は、いまの電圧（HIGH＝3.3V、LOW＝0V）です。</p>`;
+  el.innerHTML=h;
+  $('#rStop').onclick=exitRun;
+  el.querySelectorAll('[data-rv]').forEach(b=>b.onclick=()=>switchRunView(b.dataset.rv));
+  el.querySelectorAll('[data-gm]').forEach(s=>s.onchange=()=>{ const c=R.g[s.dataset.gm]; c.mode=s.value;
+    if (c.mode==='follow'&&c.follow==null) c.follow=R.inputs.find(g=>g!==+s.dataset.gm)??null; renderRun(); updateSim(); });
+  el.querySelectorAll('[data-gp]').forEach(s=>s.onchange=()=>{ R.g[s.dataset.gp].pull=s.value; updateSim(); });
+  el.querySelectorAll('[data-gf]').forEach(s=>s.onchange=()=>{ R.g[s.dataset.gf].follow=+s.value; updateSim(); });
+  el.querySelectorAll('[data-ga]').forEach(s=>s.oninput=()=>{ R.g[s.dataset.ga].angle=+s.value; $('#ga'+s.dataset.ga).textContent=s.value+'°'; updateSim(); });
+  el.querySelectorAll('[data-env]').forEach(s=>s.oninput=()=>{ R.env[s.dataset.env]=+s.value; $('#ev-'+s.dataset.env).textContent=s.value+s.dataset.unit; updateSim(); });
+  ['rT0','rT1'].forEach((id,i)=>{ const t=$('#'+id); if(t) t.oninput=()=>{ R.text[i]=t.value; updateSim(); }; });
+  const snd=$('#rSound'); if (snd) snd.onchange=()=>{ R.sound=snd.checked; updateSim(); };
+  if (R.view==='code'){
+    const ta=$('#cCode'); ta.value=S.code||defaultCode(); setupEditor();
+    $('#cTpl').onchange=e=>{ const i=e.target.value; if(i==='') return; ta.value=TEMPLATES[pico?'pico':'pi'][+i][1]; e.target.value=''; paintGutter(); saveCode(ta.value); markErrLine(null); ta.focus(); };
+    $('#cRun').onclick=runCode; $('#cStop').onclick=stopCode; $('#cClr').onclick=()=>{ conBuf.length=0; conPartial=''; paintCon(); };
+    codeButtons(); paintCon();
+  }
+  gpListSig=''; updateRunPanel();
+}
+function defaultCode(){ return TEMPLATES[isPicoCircuit()?'pico':'pi'][0][1]; }
+function switchRunView(v){
+  if (!run || run.view===v) return;
+  stopCode();
+  const go=()=>{
+    run.view=v;
+    if (v==='code'){ for (const k of Object.keys(run.g)) delete run.g[k]; run.onboard=false; run.oledLines=null; loadSkulpt().catch(()=>{}); }
+    else { const fresh=initRun(); run.g=fresh.g; run.uses=fresh.uses; run.onboard=false; run.oledLines=null; run.text=fresh.text; }
+    $('.main').classList.toggle('wide', v==='code');
+    renderRun(); updateSim();
+  };
+  if (codeRunning){ const t=setInterval(()=>{ if(!codeRunning){ clearInterval(t); go(); } },50); } else go();
+}
+let gpListSig='';
+function updateGpList(){
+  const box=$('#gpList'); if(!box||!simS) return;
+  const keys=Object.keys(simS.gl).sort((a,b)=>a-b);
+  const pico=isPicoCircuit();
+  const sig=keys.join(',')+(pico&&run.onboard!==undefined?'|LED':'');
+  if (sig!==gpListSig){
+    gpListSig=sig;
+    let h='';
+    if (pico) h+=`<div class="gpio"><div class="gh"><b>LED</b><span class="gd">Pico W 本体のLED</span><span class="lvl" id="lvLED"></span></div></div>`;
+    for (const k of keys){ const u=(run.uses||[]).find(x=>x.gpio===+k); h+=`<div class="gpio"><div class="gh"><b>${GN(k)}</b><span class="gd">${u?esc(u.desc):'（何もつながっていません）'}</span><span class="lvl" id="lv${k}"></span></div></div>`; }
+    if (!keys.length&&!pico) h='<p class="muted small">プログラムを実行すると、使っているGPIOのようすが出ます。</p>';
+    box.innerHTML=h;
+  }
+  const l=$('#lvLED'); if(l){ l.className='lvl '+(run.onboard?'hi':'lo'); l.textContent=run.onboard?'ON':'OFF'; }
+}
+function enterRun(){
+  if (stepMode) exitSteps();
+  ensureAudio();
+  run=initRun(); sel=null; hover=null; hideTip(); drawOverlay();
+  const b=$('#bRun'); b.classList.add('on'); b.textContent='■ 止める';
+  for (const id of ['bUndo','bRedo','bRot','bDel','bSteps']) $('#'+id).disabled=true;
+  $('#tabsBar').hidden=true; for (const id of ['insp','check','steps','share']) $('#tb-'+id).hidden=true;
+  $('#runPanel').hidden=false; $('#hint').hidden=true;
+  renderRun(); renderAll(); updateSim();
+  blinkTimer=setInterval(()=>{ if(!run) return; run.phase=!run.phase; if(Object.values(run.g).some(c=>c.mode==='blink')) updateSim(); },500);
+}
+function exitRun(){
+  if (codeRunning){ HW.stop=true; HW.kill=true; }
+  $('.main').classList.remove('wide');
+  clearInterval(blinkTimer); setBuzz(false); run=null; simS=null;
+  const b=$('#bRun'); b.classList.remove('on'); b.textContent='▶ 動かす';
+  for (const id of ['bRot','bDel','bSteps']) $('#'+id).disabled=false;
+  $('#bUndo').disabled=!hist.length; $('#bRedo').disabled=!fut.length;
+  $('#runPanel').hidden=true; $('#tabsBar').hidden=false; switchTab(tab);
+  renderAll();
+}
+$('#bRun').onclick=()=>{ run?exitRun():enterRun(); };
+
+/* ===================== Python（Skulpt）用のモジュール ===================== */
+const PYMODS = {
+'_hw.js': 'var $builtinmodule = function(name){ return window.__hwModule(); };',
+'_rt.py': `import _hw
+_pollers = []
+def poll():
+    for f in list(_pollers):
+        f()
+def sleep(sec):
+    end = _hw.ticks() + sec * 1000
+    poll()
+    while True:
+        r = end - _hw.ticks()
+        if r <= 0:
+            break
+        _hw.wait(min(r, 20))
+        poll()
+def ticks_ms():
+    return int(_hw.ticks())
+def call(cb, dev):
+    try:
+        cb()
+    except TypeError:
+        cb(dev)
+`,
+'time.py': `import _rt
+def sleep(s):
+    _rt.sleep(s)
+def sleep_ms(ms):
+    _rt.sleep(ms / 1000)
+def sleep_us(us):
+    _rt.sleep(us / 1000000)
+def ticks_ms():
+    return _rt.ticks_ms()
+def ticks_us():
+    return _rt.ticks_ms() * 1000
+def ticks_diff(a, b):
+    return a - b
+def ticks_add(a, b):
+    return a + b
+def time():
+    return _rt.ticks_ms() / 1000
+def monotonic():
+    return _rt.ticks_ms() / 1000
+def perf_counter():
+    return _rt.ticks_ms() / 1000
+`,
+'utime.py': 'from time import *\n',
+'signal.py': `import _rt
+def pause():
+    while True:
+        _rt.sleep(0.05)
+`,
+'gpiozero.py': `import _hw, _rt
+
+class GPIOZeroError(Exception):
+    pass
+
+def _pin(p):
+    if isinstance(p, str):
+        s = p.upper()
+        if s.startswith("GPIO"):
+            return int(s[4:])
+        if s.startswith("BCM"):
+            return int(s[3:])
+        return int(s)
+    return p
+
+def pause():
+    while True:
+        _rt.sleep(0.05)
+
+class Device:
+    def close(self):
+        pass
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        self.close()
+
+class OutputDevice(Device):
+    def __init__(self, pin=None, active_high=True, initial_value=False, pin_factory=None):
+        self.pin = _pin(pin)
+        self.active_high = active_high
+        self._v = 0
+        self._blink = None
+        _hw.setup(self.pin, "out", "")
+        self._set(1 if initial_value else 0)
+        _rt._pollers.append(self._tick)
+    def _out(self, v):
+        lvl = v if self.active_high else (0 if v else 1)
+        _hw.write(self.pin, lvl)
+    def _set(self, v):
+        self._v = v
+        self._out(v)
+    def on(self):
+        self._blink = None
+        self._set(1)
+    def off(self):
+        self._blink = None
+        self._set(0)
+    def toggle(self):
+        self._blink = None
+        self._set(0 if self._v else 1)
+    def _get_value(self):
+        return self._v
+    def _set_value(self, v):
+        self._blink = None
+        self._set(v)
+    value = property(_get_value, _set_value)
+    def _is_active(self):
+        return bool(self._v)
+    is_active = property(_is_active)
+    is_lit = property(_is_active)
+    def blink(self, on_time=1, off_time=1, n=None, background=True):
+        self._set(1)
+        self._blink = [on_time, off_time, n, _hw.ticks(), 1]
+        if not background:
+            while self._blink is not None:
+                _rt.sleep(0.02)
+    def beep(self, on_time=1, off_time=1, n=None, background=True):
+        self.blink(on_time, off_time, n, background)
+    def _tick(self):
+        b = self._blink
+        if b is None:
+            return
+        dur = (b[0] if b[4] else b[1]) * 1000
+        if _hw.ticks() - b[3] >= dur:
+            b[3] = _hw.ticks()
+            b[4] = 0 if b[4] else 1
+            if b[4] == 1 and b[2] is not None:
+                b[2] = b[2] - 1
+                if b[2] <= 0:
+                    self._blink = None
+                    self._set(0)
+                    return
+            self._set(b[4])
+            self._blink = b
+    def close(self):
+        self._blink = None
+        _hw.write(self.pin, 0)
+
+DigitalOutputDevice = OutputDevice
+
+class LED(OutputDevice):
+    pass
+
+class Buzzer(OutputDevice):
+    pass
+
+class PWMOutputDevice(OutputDevice):
+    def __init__(self, pin=None, active_high=True, initial_value=0, frequency=100, pin_factory=None):
+        self.frequency = frequency
+        OutputDevice.__init__(self, pin, active_high, initial_value)
+    def _out(self, v):
+        v = max(0, min(1, float(v)))
+        _hw.duty(self.pin, v if self.active_high else 1 - v, self.frequency)
+    def pulse(self, fade_in_time=1, fade_out_time=1, n=None, background=True):
+        self.blink(fade_in_time, fade_out_time, n, background)
+
+class PWMLED(PWMOutputDevice):
+    pass
+
+class InputDevice(Device):
+    def __init__(self, pin=None, pull_up=False, active_state=None, bounce_time=None, hold_time=1, pin_factory=None):
+        self.pin = _pin(pin)
+        self.pull_up = pull_up
+        _hw.setup(self.pin, "in", "up" if pull_up else ("down" if pull_up is False else "none"))
+        self.when_pressed = None
+        self.when_released = None
+        self.when_activated = None
+        self.when_deactivated = None
+        self._last = self._active()
+        _rt._pollers.append(self._tick)
+    def _active(self):
+        v = _hw.read(self.pin)
+        return (not v) if self.pull_up else bool(v)
+    def _p(self):
+        return self._active()
+    is_pressed = property(_p)
+    is_active = property(_p)
+    def _val(self):
+        return 1 if self._active() else 0
+    value = property(_val)
+    def wait_for_press(self, timeout=None):
+        while not self._active():
+            _rt.sleep(0.02)
+    def wait_for_release(self, timeout=None):
+        while self._active():
+            _rt.sleep(0.02)
+    wait_for_active = wait_for_press
+    wait_for_inactive = wait_for_release
+    def _tick(self):
+        p = self._active()
+        if p != self._last:
+            self._last = p
+            cb = (self.when_pressed or self.when_activated) if p else (self.when_released or self.when_deactivated)
+            if cb is not None:
+                _rt.call(cb, self)
+
+class Button(InputDevice):
+    def __init__(self, pin=None, pull_up=True, active_state=None, bounce_time=None, hold_time=1, hold_repeat=False, pin_factory=None):
+        InputDevice.__init__(self, pin, pull_up)
+
+class DigitalInputDevice(InputDevice):
+    pass
+
+class MotionSensor(InputDevice):
+    pass
+
+class Servo(Device):
+    def __init__(self, pin=None, initial_value=0, min_pulse_width=0.001, max_pulse_width=0.002, frame_width=0.02, pin_factory=None):
+        self.pin = _pin(pin)
+        _hw.setup(self.pin, "out", "")
+        self._v = initial_value
+        self._apply()
+    def _apply(self):
+        if self._v is None:
+            _hw.write(self.pin, 0)
+        else:
+            _hw.angle(self.pin, (max(-1, min(1, self._v)) + 1) * 90)
+    def _gv(self):
+        return self._v
+    def _sv(self, v):
+        self._v = v
+        self._apply()
+    value = property(_gv, _sv)
+    def min(self):
+        self.value = -1
+    def mid(self):
+        self.value = 0
+    def max(self):
+        self.value = 1
+    def detach(self):
+        self.value = None
+
+class AngularServo(Servo):
+    def __init__(self, pin=None, initial_angle=0, min_angle=-90, max_angle=90, min_pulse_width=0.001, max_pulse_width=0.002, frame_width=0.02, pin_factory=None):
+        self.min_angle = min_angle
+        self.max_angle = max_angle
+        self._a = initial_angle
+        Servo.__init__(self, pin, self._to_v(initial_angle))
+    def _to_v(self, a):
+        return (a - self.min_angle) / (self.max_angle - self.min_angle) * 2 - 1
+    def _ga(self):
+        return self._a
+    def _sa(self, a):
+        self._a = a
+        self.value = None if a is None else self._to_v(a)
+    angle = property(_ga, _sa)
+
+class DistanceSensor(Device):
+    def __init__(self, echo=None, trigger=None, queue_len=9, max_distance=1, threshold_distance=0.3, partial=False, pin_factory=None):
+        self.echo = _pin(echo)
+        self.trigger = _pin(trigger)
+        self.max_distance = max_distance
+        _hw.setup(self.trigger, "out", "")
+        _hw.setup(self.echo, "in", "none")
+    def _d(self):
+        d = _hw.dist(self.trigger, self.echo)
+        if d is None:
+            return self.max_distance
+        return min(self.max_distance, d / 100)
+    distance = property(_d)
+`,
+'board.py': `D0=0
+D1=1
+D2=2
+D3=3
+D4=4
+D5=5
+D6=6
+D7=7
+D8=8
+D9=9
+D10=10
+D11=11
+D12=12
+D13=13
+D14=14
+D15=15
+D16=16
+D17=17
+D18=18
+D19=19
+D20=20
+D21=21
+D22=22
+D23=23
+D24=24
+D25=25
+D26=26
+D27=27
+SDA=2
+SCL=3
+def I2C():
+    return None
+`,
+'adafruit_dht.py': `import _hw
+class DHT22:
+    def __init__(self, pin, use_pulseio=True):
+        self.pin = pin
+    def _read(self):
+        r = _hw.dht(self.pin)
+        if r is None:
+            raise RuntimeError("DHTセンサーから応答がありません（配線を確認）")
+        return r
+    def _t(self):
+        return self._read()[0]
+    def _h(self):
+        return self._read()[1]
+    temperature = property(_t)
+    humidity = property(_h)
+    def exit(self):
+        pass
+DHT11 = DHT22
+`,
+'w1thermsensor.py': `import _hw
+class NoSensorFoundError(Exception):
+    pass
+class W1ThermSensor:
+    def __init__(self, *args, **kwargs):
+        if _hw.ds18(None) is None:
+            raise NoSensorFoundError("DS18B20が見つかりません（配線・プルアップ抵抗を確認）")
+    def get_temperature(self, unit=None):
+        t = _hw.ds18(None)
+        if t is None:
+            raise NoSensorFoundError("DS18B20が見つかりません")
+        return t
+`,
+'RPLCD/__init__.py': '',
+'RPLCD/i2c.py': `import _hw
+class CharLCD:
+    def __init__(self, i2c_expander="PCF8574", address=0x27, port=1, cols=16, rows=2, **kwargs):
+        self.cols = cols
+        self._l = ["", ""]
+        self._r = 0
+        self._c = 0
+        if not _hw.i2cscan(None, None):
+            raise IOError("液晶（I2C）が見つかりません。SDA・SCL・電源を確認しましょう")
+        self._show()
+    def _show(self):
+        _hw.lcd(self._l[0], self._l[1])
+    def clear(self):
+        self._l = ["", ""]
+        self._r = 0
+        self._c = 0
+        self._show()
+    def home(self):
+        self._r = 0
+        self._c = 0
+    def _gc(self):
+        return (self._r, self._c)
+    def _sc(self, rc):
+        self._r = rc[0]
+        self._c = rc[1]
+    cursor_pos = property(_gc, _sc)
+    def write_string(self, s):
+        for ch in str(s):
+            if ch == "\\n":
+                self._r = min(1, self._r + 1)
+            elif ch == "\\r":
+                self._c = 0
+            else:
+                line = self._l[self._r]
+                line = line + " " * max(0, self._c - len(line))
+                line = line[:self._c] + ch + line[self._c + 1:]
+                self._l[self._r] = line[:self.cols]
+                self._c = self._c + 1
+        self._show()
+    def close(self, clear=False):
+        if clear:
+            self.clear()
+`,
+'machine.py': `import _hw, _rt
+
+class Pin:
+    IN = 0
+    OUT = 1
+    OPEN_DRAIN = 2
+    PULL_UP = 1
+    PULL_DOWN = 2
+    IRQ_FALLING = 4
+    IRQ_RISING = 8
+    def __init__(self, id, mode=-1, pull=-1, value=None):
+        self.id = id
+        self._mode = -1
+        self._v = 0
+        self._irq = None
+        self.init(mode, pull, value)
+    def init(self, mode=-1, pull=-1, value=None):
+        if mode == Pin.OUT:
+            self._mode = mode
+            _hw.setup(self.id, "out", "")
+            self.value(value if value is not None else 0)
+        elif mode == Pin.IN:
+            self._mode = mode
+            _hw.setup(self.id, "in", "up" if pull == Pin.PULL_UP else ("down" if pull == Pin.PULL_DOWN else "none"))
+    def value(self, v=None):
+        if v is None:
+            if self._mode == Pin.OUT:
+                return self._v
+            return 1 if _hw.read(self.id) else 0
+        self._v = 1 if v else 0
+        _hw.write(self.id, self._v)
+    def __call__(self, v=None):
+        return self.value(v)
+    def on(self):
+        self.value(1)
+    def off(self):
+        self.value(0)
+    def high(self):
+        self.value(1)
+    def low(self):
+        self.value(0)
+    def toggle(self):
+        self.value(0 if self._v else 1)
+    def irq(self, handler=None, trigger=12, hard=False):
+        self._irq = [handler, trigger, self.value()]
+        if self._tick not in _rt._pollers:
+            _rt._pollers.append(self._tick)
+    def _tick(self):
+        q = self._irq
+        if q is None or q[0] is None:
+            return
+        v = self.value()
+        if v != q[2]:
+            old = q[2]
+            q[2] = v
+            if (old == 1 and v == 0 and (q[1] & 4)) or (old == 0 and v == 1 and (q[1] & 8)):
+                q[0](self)
+
+def _pid(p):
+    if isinstance(p, Pin):
+        return p.id
+    return p
+
+class ADC:
+    def __init__(self, pin):
+        p = _pid(pin)
+        if isinstance(p, int) and p < 4:
+            p = 26 + p
+        self.pin = p
+    def read_u16(self):
+        return _hw.adc(self.pin)
+
+class PWM:
+    def __init__(self, pin, freq=None, duty_u16=None):
+        self.pin = _pid(pin)
+        self._f = freq or 1000
+        self._d = duty_u16 or 0
+        _hw.setup(self.pin, "out", "")
+        self._apply()
+    def _apply(self):
+        _hw.duty(self.pin, self._d / 65535, self._f)
+    def freq(self, f=None):
+        if f is None:
+            return self._f
+        self._f = f
+        self._apply()
+    def duty_u16(self, d=None):
+        if d is None:
+            return self._d
+        self._d = max(0, min(65535, int(d)))
+        self._apply()
+    def duty_ns(self, ns=None):
+        if ns is None:
+            return int(self._d / 65535 * 1000000000 / self._f)
+        self.duty_u16(ns / (1000000000 / self._f) * 65535)
+    def deinit(self):
+        self._d = 0
+        _hw.write(self.pin, 0)
+
+class I2C:
+    def __init__(self, id=0, scl=None, sda=None, freq=400000):
+        self.id = id
+        self.scl = _pid(scl)
+        self.sda = _pid(sda)
+    def scan(self):
+        return _hw.i2cscan(self.sda, self.scl)
+    def writeto(self, addr, buf):
+        pass
+
+SoftI2C = I2C
+
+def freq(f=None):
+    return 125000000
+
+def reset():
+    pass
+`,
+'dht.py': `import _hw
+def _pid(p):
+    return p.id if hasattr(p, "id") else p
+class DHT22:
+    def __init__(self, pin):
+        self.pin = _pid(pin)
+        self._r = None
+    def measure(self):
+        r = _hw.dht(self.pin)
+        if r is None:
+            raise OSError("[Errno 110] ETIMEDOUT（DHTセンサーから応答がありません）")
+        self._r = r
+    def temperature(self):
+        if self._r is None:
+            raise OSError("先に measure() を呼びましょう")
+        return self._r[0]
+    def humidity(self):
+        if self._r is None:
+            raise OSError("先に measure() を呼びましょう")
+        return self._r[1]
+DHT11 = DHT22
+`,
+'onewire.py': `class OneWire:
+    def __init__(self, pin):
+        self.pin = pin.id if hasattr(pin, "id") else pin
+`,
+'ds18x20.py': `import _hw
+class DS18X20:
+    def __init__(self, ow):
+        self.pin = ow.pin
+    def scan(self):
+        if _hw.ds18(self.pin) is None:
+            return []
+        return [bytearray(b"\\x28\\x01\\x02\\x03\\x04\\x05\\x06\\x07")]
+    def convert_temp(self):
+        pass
+    def read_temp(self, rom):
+        t = _hw.ds18(self.pin)
+        if t is None:
+            raise OSError("DS18B20から応答がありません")
+        return t
+`,
+'ssd1306.py': `import _hw
+class SSD1306_I2C:
+    def __init__(self, width, height, i2c, addr=0x3c, external_vcc=False):
+        self.width = width
+        self.height = height
+        self.i2c = i2c
+        if not _hw.i2cscan(i2c.sda, i2c.scl):
+            raise OSError("[Errno 5] EIO（OLEDが見つかりません。SDA・SCL・電源を確認）")
+        self._rows = {}
+    def fill(self, c):
+        self._rows = {}
+    def text(self, s, x=0, y=0, c=1):
+        r = int(y // 8)
+        line = self._rows.get(r, "")
+        col = int(x // 6)
+        line = line + " " * max(0, col - len(line))
+        s = str(s)
+        self._rows[r] = (line[:col] + s + line[col + len(s):])[:21]
+    def show(self):
+        out = []
+        for i in range(8):
+            out.append(self._rows.get(i, ""))
+        _hw.oled(out)
+    def pixel(self, x, y, c=1):
+        pass
+    def hline(self, x, y, w, c=1):
+        pass
+    def vline(self, x, y, h, c=1):
+        pass
+    def rect(self, x, y, w, h, c=1):
+        pass
+    def fill_rect(self, x, y, w, h, c=1):
+        pass
+    def poweroff(self):
+        _hw.oled([])
+    def poweron(self):
+        self.show()
+    def contrast(self, c):
+        pass
+`,
+'micropython.py': `def const(x):
+    return x
+`,
+};
+PYMODS['utime.py']='from time import *\n';
+
+const TEMPLATES = {
+pi: [
+['ボタンでLED＋温湿度（サンプル回路用）', `from gpiozero import LED, Button
+import adafruit_dht
+import board
+from time import sleep
+
+led = LED(17)
+button = Button(27)
+dht = adafruit_dht.DHT22(board.D4)
+
+# ボタンを押している間だけLEDをつける
+button.when_pressed = led.on
+button.when_released = led.off
+
+while True:
+    try:
+        print("気温 {:.1f}℃  湿度 {:.0f}%".format(dht.temperature, dht.humidity))
+    except RuntimeError as e:
+        print("読み取りエラー:", e)
+    sleep(2)
+`],
+['Lチカ（LEDの点滅）', `from gpiozero import LED
+from time import sleep
+
+led = LED(17)   # 自分の配線に合わせてピン番号を変えよう
+
+while True:
+    led.on()
+    sleep(0.5)
+    led.off()
+    sleep(0.5)
+`],
+['blink() で点滅', `from gpiozero import LED
+from signal import pause
+
+led = LED(17)
+led.blink(on_time=0.2, off_time=0.8)
+
+pause()   # プログラムを終わらせずに待つ
+`],
+['ボタンを押したらLED', `from gpiozero import LED, Button
+from signal import pause
+
+led = LED(17)
+button = Button(27)   # Buttonは内部プルアップ（押すとLOW）
+
+button.when_pressed = led.on
+button.when_released = led.off
+
+pause()
+`],
+['ボタンで ON/OFF 切りかえ', `from gpiozero import LED, Button
+from signal import pause
+
+led = LED(17)
+button = Button(27)
+
+button.when_pressed = led.toggle
+
+pause()
+`],
+['ブザーを鳴らす', `from gpiozero import Buzzer
+from time import sleep
+
+buzzer = Buzzer(22)
+
+for i in range(3):
+    buzzer.on()
+    sleep(0.3)
+    buzzer.off()
+    sleep(0.3)
+print("おわり")
+`],
+['サーボモーター', `from gpiozero import AngularServo
+from time import sleep
+
+servo = AngularServo(18, min_angle=0, max_angle=180)
+
+while True:
+    for a in [0, 90, 180, 90]:
+        servo.angle = a
+        print("角度", a)
+        sleep(1)
+`],
+['超音波で距離をはかる', `from gpiozero import DistanceSensor
+from time import sleep
+
+sensor = DistanceSensor(echo=24, trigger=23, max_distance=4)
+
+while True:
+    print("距離 {:.1f} cm".format(sensor.distance * 100))
+    sleep(0.5)
+`],
+['液晶（LCD1602）に表示', `from RPLCD.i2c import CharLCD
+from time import sleep
+
+lcd = CharLCD('PCF8574', 0x27)
+lcd.clear()
+lcd.write_string("Hello Saino!")
+lcd.cursor_pos = (1, 0)
+lcd.write_string("Haisen Lab")
+`],
+['水温（DS18B20）', `from w1thermsensor import W1ThermSensor
+from time import sleep
+
+sensor = W1ThermSensor()
+
+while True:
+    print("水温 {:.1f}℃".format(sensor.get_temperature()))
+    sleep(1)
+`],
+],
+pico: [
+['サンプル回路用（ボタン・LED・土壌水分）', `from machine import Pin, ADC
+import time
+
+led = Pin(15, Pin.OUT)
+button = Pin(16, Pin.IN, Pin.PULL_UP)
+soil = ADC(26)   # GP26 = ADC0
+
+count = 0
+while True:
+    # ボタンを押すと 0 になる（プルアップ）
+    if button.value() == 0:
+        led.on()
+    else:
+        led.off()
+    count += 1
+    if count % 10 == 0:
+        print("土の水分（ADCの値）:", soil.read_u16())
+    time.sleep(0.1)
+`],
+['本体のLEDを点滅', `from machine import Pin
+import time
+
+led = Pin("LED", Pin.OUT)   # Pico W の本体LED
+
+while True:
+    led.toggle()
+    time.sleep(0.5)
+`],
+['外付けLEDを点滅', `from machine import Pin
+import time
+
+led = Pin(15, Pin.OUT)   # 自分の配線に合わせてGP番号を変えよう
+
+while True:
+    led.value(1)
+    time.sleep(0.5)
+    led.value(0)
+    time.sleep(0.5)
+`],
+['ボタンを押したらLED', `from machine import Pin
+import time
+
+led = Pin(15, Pin.OUT)
+button = Pin(16, Pin.IN, Pin.PULL_UP)
+
+while True:
+    led.value(not button.value())
+    time.sleep(0.02)
+`],
+['ボタンの割り込み（irq）', `from machine import Pin
+
+led = Pin(15, Pin.OUT)
+button = Pin(16, Pin.IN, Pin.PULL_UP)
+
+def pressed(pin):
+    led.toggle()
+    print("押されました")
+
+button.irq(trigger=Pin.IRQ_FALLING, handler=pressed)
+
+import time
+while True:
+    time.sleep(1)
+`],
+['LEDの明るさ（PWM）', `from machine import Pin, PWM
+import time
+
+led = PWM(Pin(15))
+led.freq(1000)
+
+while True:
+    for d in range(0, 65536, 4096):
+        led.duty_u16(d)
+        time.sleep(0.05)
+    for d in range(65535, 0, -4096):
+        led.duty_u16(d)
+        time.sleep(0.05)
+`],
+['土壌水分センサー（ADC）', `from machine import ADC
+import time
+
+soil = ADC(26)   # GP26 = ADC0
+
+while True:
+    v = soil.read_u16()
+    percent = (50000 - v) / (50000 - 20000) * 100
+    print("ADC:", v, " 水分のめやす:", int(max(0, min(100, percent))), "%")
+    time.sleep(1)
+`],
+['温湿度（DHT22）', `from machine import Pin
+import dht
+import time
+
+sensor = dht.DHT22(Pin(15))
+
+while True:
+    sensor.measure()
+    print("気温:", sensor.temperature(), "℃  湿度:", sensor.humidity(), "%")
+    time.sleep(2)
+`],
+['サーボモーター（PWM）', `from machine import Pin, PWM
+import time
+
+servo = PWM(Pin(15))
+servo.freq(50)
+
+def angle(a):
+    # 0.5ms〜2.5ms のパルスで 0〜180度
+    us = 500 + a / 180 * 2000
+    servo.duty_ns(int(us * 1000))
+
+while True:
+    for a in [0, 90, 180, 90]:
+        angle(a)
+        time.sleep(1)
+`],
+['OLEDに表示（SSD1306）', `from machine import Pin, I2C
+import ssd1306
+
+i2c = I2C(0, sda=Pin(0), scl=Pin(1))
+print("見つかったI2C機器:", [hex(a) for a in i2c.scan()])
+oled = ssd1306.SSD1306_I2C(128, 64, i2c)
+
+oled.fill(0)
+oled.text("Hello Saino!", 0, 0)
+oled.text("Pico W", 0, 16)
+oled.show()
+`],
+['水温（DS18B20）', `from machine import Pin
+import onewire, ds18x20
+import time
+
+ds = ds18x20.DS18X20(onewire.OneWire(Pin(16)))
+roms = ds.scan()
+print("見つかったセンサー:", len(roms))
+
+while True:
+    ds.convert_temp()
+    time.sleep(0.75)
+    for rom in roms:
+        print("水温:", ds.read_temp(rom), "℃")
+    time.sleep(1)
+`],
+]};
+
+/* ===================== Pythonとシミュレーションの橋わたし ===================== */
+const HW = {
+  stop:false, kill:false, warned:new Set(),
+  pin(p){
+    if (typeof p==='string'){ const u=p.toUpperCase(); if (u==='LED'||u==='WL_GPIO0') return 'LED'; if (/^GP\d+$/.test(u)) p=+u.slice(2); else if(/^\d+$/.test(u)) p=+u; }
+    const n=p, pico=isPicoCircuit();
+    if (typeof n!=='number'||!Number.isInteger(n)) throw new Sk.builtin.ValueError(`ピン ${p} は使えません`);
+    const ok = pico ? ((n>=0&&n<=22)||(n>=26&&n<=28)) : (n>=0&&n<=27);
+    if (!ok) throw new Sk.builtin.ValueError(`${GN(n)} は${pico?'Pico Wに':'ラズパイに'}ないピン番号です`);
+    return n;
+  },
+  cfg(n){ return run.g[n]||(run.g[n]={mode:'in',pull:'none',angle:90}); },
+  setup(p,kind,pull){ const n=HW.pin(p); if(n==='LED'){ run.onboard=false; markSim(); return; }
+    run.g[n]={mode:kind==='out'?'low':'in',pull:pull||'none',angle:90,code:true}; markSim(); },
+  write(p,v){ const n=HW.pin(p); if(n==='LED'){ run.onboard=!!v; markSim(); return; } const c=HW.cfg(n); c.mode=v?'high':'low'; markSim(); },
+  read(p){ const n=HW.pin(p); if(n==='LED') return !!run.onboard;
+    const c=run.g[n]; if (c&&(c.mode==='high'||c.mode==='low')) return c.mode==='high';
+    simS=simulate(); const L=simS.pinV[n];
+    if (!L||L.v===undefined){ if(!HW.warned.has(n)){ HW.warned.add(n); conLine(`注意：${GN(n)} の入力が不定です。プルアップかプルダウンを設定しましょう（値がばらつきます）`,'warn'); } return Math.random()<0.5; }
+    return L.v>1.6; },
+  duty(p,frac,freq){ const n=HW.pin(p); const c=HW.cfg(n); c.mode='duty'; c.duty=Math.max(0,Math.min(1,frac)); c.freq=freq||1000; markSim(); },
+  angle(p,deg){ const n=HW.pin(p); const c=HW.cfg(n); c.mode='pwm'; c.angle=Math.round(Math.max(0,Math.min(180,deg))); markSim(); },
+  sensorOn(type, role, n){
+    simS=simulate();
+    return S.parts.find(p=>{ if(p.type!==type) return false; const d=simS.fx.get(p.id); if(!d||!d.ok) return false;
+      if (n==null) return true; const i=pinsOf(p).findIndex(q=>q.role===role); const r=rootT(p,i);
+      return kinds(r).gpios.includes(n)||viaR(r).some(x=>kinds(x).gpios.includes(n)); });
+  },
+  adc(p){ const n=HW.pin(p);
+    if (isPicoCircuit() && !(n>=26&&n<=28)) throw new Sk.builtin.ValueError(`${GN(n)} はADCに使えません（GP26〜28を使います）`);
+    simS=simulate();
+    const soil=S.parts.find(q=>q.type==='soil'&&q._aout!=null&&kinds(rootT(q,0)).gpios.includes(n));
+    let v; if (soil) v=soil._aout; else { const L=simS.pinV[n]; v = L&&L.v!==undefined ? L.v : 0.3+Math.random()*0.6; }
+    return Math.max(0,Math.min(65535,Math.round(v/3.3*65535+(Math.random()-0.5)*600))); },
+  dht(p){ const n=p==null?null:HW.pin(p); const s=HW.sensorOn('dht22','dout',n); if(!s) return null;
+    return [Math.round((run.env.temp+(Math.random()-0.5)*0.2)*10)/10, Math.round((run.env.hum+(Math.random()-0.5)*0.6)*10)/10]; },
+  ds18(p){ const n=p==null?null:HW.pin(p); const s=HW.sensorOn('ds18b20','onewire',n); if(!s) return null; return Math.round((run.env.water+(Math.random()-0.5)*0.1)*100)/100; },
+  dist(t,e){ const tn=HW.pin(t), en=HW.pin(e); simS=simulate();
+    const s=S.parts.find(p=>{ if(p.type!=='hcsr04') return false; const d=simS.fx.get(p.id); if(!d||!d.ok) return false;
+      const ti=pinsOf(p).findIndex(q=>q.role==='din'), ei=pinsOf(p).findIndex(q=>q.role==='echo');
+      const hit=(i,g)=>{ const r=rootT(p,i); return kinds(r).gpios.includes(g)||viaR(r).some(x=>kinds(x).gpios.includes(g)); };
+      return hit(ti,tn)&&hit(ei,en); });
+    if (!s){ if(!HW.warned.has('dist')){ HW.warned.add('dist'); conLine('注意：距離センサーのTrig/Echoの配線とピン番号が合っていません','warn'); } return null; }
+    return run.env.dist+(Math.random()-0.5)*0.4; },
+  i2cscan(sda,scl){ simS=simulate(); const out=[];
+    const mk=isPicoCircuit()?'pico':'pi';
+    for (const p of S.parts){ if(!['lcd','oled','bh1750'].includes(p.type)) continue; const d=simS.fx.get(p.id); if(!d||!d.ok) continue;
+      if (sda!=null){ const a=kinds(rootT(p,pinsOf(p).findIndex(q=>q.role==='sda'))).gpios, b=kinds(rootT(p,pinsOf(p).findIndex(q=>q.role==='scl'))).gpios; if(!a.includes(HW.pin(sda))||!b.includes(HW.pin(scl))) continue; }
+      out.push(p.type==='lcd'?0x27:p.type==='oled'?0x3c:0x23); }
+    return out; },
+  lcd(a,b){ run.text=[a,b]; markSim(); },
+  oled(lines){ run.oledLines=lines; markSim(); },
+};
+window.__hwModule = function(){
+  const mod={}, J=x=>Sk.ffi.remapToJs(x), none=Sk.builtin.none.none$;
+  const fn=f=>new Sk.builtin.func((...a)=>{ if(!run) throw new Sk.builtin.SystemExit('停止'); return f(...a); });
+  const py=v=> v===null||v===undefined ? none : Array.isArray(v) ? new Sk.builtin.list(v.map(py)) : typeof v==='boolean' ? (v?Sk.builtin.bool.true$:Sk.builtin.bool.false$) : typeof v==='number' ? (Number.isInteger(v)?new Sk.builtin.int_(v):new Sk.builtin.float_(v)) : new Sk.builtin.str(String(v));
+  mod.ticks=fn(()=>new Sk.builtin.float_(performance.now()));
+  mod.wait=fn(ms=>Sk.misceval.promiseToSuspension(new Promise((res,rej)=>setTimeout(()=>{ if(HW.stop) rej(new Sk.builtin.SystemExit('停止')); else res(none); }, Math.max(1,J(ms)))))) ;
+  mod.setup=fn((p,k,u)=>{ HW.setup(J(p),J(k),J(u)); return none; });
+  mod.write=fn((p,v)=>{ HW.write(J(p),J(v)); return none; });
+  mod.read=fn(p=>py(HW.read(J(p))));
+  mod.duty=fn((p,d,f)=>{ HW.duty(J(p),J(d),J(f)); return none; });
+  mod.angle=fn((p,a)=>{ HW.angle(J(p),J(a)); return none; });
+  mod.adc=fn(p=>py(HW.adc(J(p))));
+  mod.dht=fn(p=>{ const r=HW.dht(J(p)); return r?new Sk.builtin.tuple([py(r[0]),py(r[1])]):none; });
+  mod.ds18=fn(p=>py(HW.ds18(J(p))));
+  mod.dist=fn((t,e)=>py(HW.dist(J(t),J(e))));
+  mod.i2cscan=fn((a,b)=>py(HW.i2cscan(J(a),J(b))));
+  mod.lcd=fn((a,b)=>{ HW.lcd(J(a),J(b)); return none; });
+  mod.oled=fn(l=>{ HW.oled(J(l)); return none; });
+  return mod;
+};
+
+let simQueued=false;
+function markSim(){ if(simQueued) return; simQueued=true; requestAnimationFrame(()=>{ simQueued=false; updateSim(); }); }
+
+/* ===================== Skulptの読み込みと実行 ===================== */
+let skLoading=null, codeRunning=false, killTimer=null;
+function loadSkulpt(){
+  if (window.Sk && Sk.misceval && Sk.builtinFiles) return Promise.resolve();
+  if (skLoading) return skLoading;
+  const add=src=>new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=src; sc.onload=res; sc.onerror=()=>rej(new Error('load')); document.head.appendChild(sc); });
+  skLoading=add('https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js').then(()=>add('https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js')).catch(e=>{ skLoading=null; throw e; });
+  return skLoading;
+}
+function skRead(path){
+  const m=path.match(/^src\/(?:lib|builtin)\/(.+)$/);
+  if (m){ const rel=m[1];
+    if (PYMODS[rel]!==undefined) return PYMODS[rel];
+    if (/^(time|utime|signal)(\.js|\/__init__\.(py|js))$/.test(rel)) throw new Error('blocked'); }
+  if (Sk.builtinFiles && Sk.builtinFiles.files[path]!==undefined) return Sk.builtinFiles.files[path];
+  throw new Error('File not found: '+path);
+}
+const conBuf=[];
+function conLine(t,cls){ conBuf.push([t,cls||'']); if(conBuf.length>400) conBuf.splice(0,conBuf.length-400); paintCon(); }
+let conPartial='';
+function conOut(t){ conPartial+=t; const parts=conPartial.split('\n'); conPartial=parts.pop(); for(const l of parts) conBuf.push([l,'']); if(conBuf.length>400) conBuf.splice(0,conBuf.length-400); paintCon(); }
+let conQueued=false;
+function paintCon(){ if(conQueued) return; conQueued=true; requestAnimationFrame(()=>{ conQueued=false; const el=$('#cOut'); if(!el) return;
+  const atEnd=el.scrollTop+el.clientHeight>=el.scrollHeight-20;
+  el.innerHTML=conBuf.map(([t,c])=>`<div class="${c}">${esc(t)||'&nbsp;'}</div>`).join('')+(conPartial?`<div>${esc(conPartial)}</div>`:'');
+  if(atEnd) el.scrollTop=el.scrollHeight; }); }
+const ERR_HINT = {
+  NameError:'名前が見つかりません。つづりのまちがいや、import のし忘れがないか確認しましょう',
+  SyntaxError:'文法のまちがいです。コロン（:）、かっこの閉じ忘れ、全角の文字や空白が入っていないか確認しましょう',
+  IndentationError:'インデント（行の先頭の空白）がそろっていません。スペース4つずつにそろえましょう',
+  TabError:'タブとスペースがまざっています。スペースにそろえましょう',
+  ImportError:'このアプリでは使えないライブラリです',
+  ModuleNotFoundError:'このアプリでは使えないライブラリです',
+  AttributeError:'その部品（オブジェクト）にない名前を使っています。つづりを確認しましょう',
+  TypeError:'値の種類や、関数にわたす値の数がちがいます',
+  ValueError:'値が正しくありません。ピン番号などを確認しましょう',
+  RuntimeError:'センサーから読めませんでした。配線を確認しましょう（実物でもときどき起きます。try: で囲むと止まらずにすみます）',
+  IOError:'デバイスから応答がありません。配線を確認しましょう',
+  NoSensorFoundError:'センサーが見つかりません。配線とプルアップ抵抗を確認しましょう',
+  ZeroDivisionError:'0で割り算しています',
+};
+function conErr(e){
+  let name=e&&e.tp$name, msg='', line=null;
+  try{ msg=e.toString(); }catch(_){ msg=String(e); }
+  if (e&&e.traceback&&e.traceback.length){ const f=e.traceback.find(t=>/stdin/.test(t.filename||''))||e.traceback[0]; line=f.lineno; }
+  msg=msg.replace(/ on line \d+$/,'').replace(/^IOError/,'OSError');
+  conLine('エラー：'+msg,'err');
+  if (line) conLine(`→ ${line}行目を見てみましょう`,'err');
+  const h=ERR_HINT[name]||(/Error/.test(msg)?'':null); if(h) conLine('ヒント：'+h,'hint');
+  if (name==='ImportError'||name==='ModuleNotFoundError') conLine(isPicoCircuit()?'使えるもの：machine, time, dht, onewire, ds18x20, ssd1306, math, random':'使えるもの：gpiozero, time, signal, adafruit_dht, board, RPLCD.i2c, w1thermsensor, math, random','hint');
+  markErrLine(line);
+}
+async function runCode(){
+  if (codeRunning||!run) return;
+  const src=$('#cCode').value; saveCode(src);
+  conBuf.length=0; conPartial=''; markErrLine(null);
+  conLine(`▶ 実行します（${isPicoCircuit()?'Pico W・MicroPython':'Raspberry Pi・Python'}）`,'sys');
+  if (/gpiozero/.test(src)&&isPicoCircuit()) conLine('注意：この回路はPico Wです。Picoでは gpiozero ではなく machine を使います','warn');
+  if (/from machine|import machine/.test(src)&&!isPicoCircuit()) conLine('注意：machine はPico（MicroPython）用です。ラズパイでは gpiozero を使います','warn');
+  if (/[　（）：]/.test(src.replace(/(["'])(?:\\.|(?!\1).)*\1/g,'').replace(/#.*$/gm,''))) conLine('注意：プログラムの中に全角の文字（空白・かっこ・コロン）があるようです','warn');
+  try{ await loadSkulpt(); }catch(e){ conLine('Pythonの実行環境を読み込めませんでした。ネットワークを確認して、もう一度ためしてください','err'); return; }
+  HW.stop=false; HW.kill=false; HW.warned=new Set();
+  for (const k of Object.keys(run.g)) delete run.g[k];
+  run.onboard=false; run.oledLines=null; run.text=['','']; updateSim();
+  Sk.configure({ output:conOut, read:skRead, __future__:Sk.python3, yieldLimit:25, execLimit:null, killableWhile:true, killableFor:true });
+  Sk.builtins.OSError=Sk.builtin.IOError; Sk.builtins.KeyboardInterrupt=Sk.builtin.SystemExit;
+  codeRunning=true; codeButtons();
+  let stopped=false, errored=false;
+  try{
+    await Sk.misceval.asyncToPromise(()=>Sk.importMainWithBody('<stdin>',false,src,true), {'*':()=>{ if(HW.kill) throw new Sk.builtin.SystemExit('停止'); }});
+    if (conPartial){ conBuf.push([conPartial,'']); conPartial=''; }
+    if (HW.stop){ stopped=true; conLine('■ 停止しました','sys'); }
+    else conLine('— プログラムが終わりました —','sys');
+  }catch(e){
+    if (conPartial){ conBuf.push([conPartial,'']); conPartial=''; }
+    if (HW.stop || (e&&e.tp$name==='SystemExit')){ stopped=true; conLine('■ 停止しました','sys'); }
+    else { errored=true; conErr(e); }
+  }finally{
+    clearTimeout(killTimer); codeRunning=false; codeButtons();
+    if (run){
+      const pico=isPicoCircuit();
+      if (!pico || stopped){ for (const k of Object.keys(run.g)) delete run.g[k]; run.onboard=false; if(!pico&&!errored) conLine(stopped?'（ラズパイでは止めるとGPIOが元にもどります）':'（gpiozeroはプログラムが終わるとGPIOを元にもどします。動かし続けるには pause() や while True: を使います）','hint'); }
+      updateSim();
+    }
+  }
+}
+function stopCode(){
+  if (!codeRunning) return;
+  HW.stop=true; clearTimeout(killTimer); killTimer=setTimeout(()=>{ HW.kill=true; },400);
+}
+function codeButtons(){ const r=$('#cRun'), s=$('#cStop'); if(r) r.disabled=codeRunning; if(s) s.disabled=!codeRunning; const st=$('#cState'); if(st) st.textContent=codeRunning?'実行中':''; }
+function saveCode(src){ if(S.code===src) return; S.code=src; lastSnap=snap(); store.set('haisenlab.v1',lastSnap); }
+function markErrLine(n){ const g=$('#cLn'); if(!g) return; g.querySelectorAll('.e').forEach(x=>x.classList.remove('e')); if(n){ const x=g.children[n-1]; if(x) x.classList.add('e'); } }
+function paintGutter(){ const ta=$('#cCode'), g=$('#cLn'); if(!ta||!g) return; const n=ta.value.split('\n').length; if(g.children.length!==n) g.innerHTML=Array.from({length:n},(_,i)=>`<span>${i+1}</span>`).join(''); g.scrollTop=ta.scrollTop; }
+function setupEditor(){
+  const ta=$('#cCode'); if(!ta) return;
+  paintGutter();
+  ta.addEventListener('input',()=>{ paintGutter(); clearTimeout(ta._t); ta._t=setTimeout(()=>saveCode(ta.value),500); });
+  ta.addEventListener('scroll',()=>{ $('#cLn').scrollTop=ta.scrollTop; });
+  ta.addEventListener('keydown',e=>{
+    if (e.key==='Tab'){ e.preventDefault(); const s=ta.selectionStart, en=ta.selectionEnd;
+      if (e.shiftKey){ const ls=ta.value.lastIndexOf('\n',s-1)+1; if(ta.value.slice(ls,ls+4)==='    '){ ta.setRangeText('',ls,ls+4,'end'); ta.selectionStart=ta.selectionEnd=Math.max(ls,s-4); } }
+      else ta.setRangeText('    ',s,en,'end');
+      paintGutter(); }
+    else if ((e.ctrlKey||e.metaKey)&&e.key==='Enter'){ e.preventDefault(); runCode(); }
+    else if (e.key==='Enter'){ const s=ta.selectionStart; const ls=ta.value.lastIndexOf('\n',s-1)+1; const line=ta.value.slice(ls,s);
+      let ind=(line.match(/^ */)||[''])[0]; if (/:\s*(#.*)?$/.test(line)) ind+='    ';
+      e.preventDefault(); ta.setRangeText('\n'+ind,s,ta.selectionEnd,'end'); paintGutter(); }
+  });
+}
+
+/* ===================== サンプル ===================== */
+function sample(){
+  const save={S,nid}; S={title:'LEDとスイッチと温湿度センサー',parts:[],wires:[],order:[]}; nid=1;
+  addPart('pi',6,4); addPart('bb830',0,28);
+  addWire([8,4],[8,28],'#222222','GNDは黒、電源は赤にそろえると、まちがいに気づきやすくなります');
+  addWire([6,5],[7,29],'#d32f2f','1番ピンの3.3Vを、上の＋ラインへ');
+  addPart('resistor',19,33,{ohm:220}).note='抵抗には向きがありません';
+  addPart('led',23,34,{color:'red'}).note='長い足（＋）が抵抗のある24列、短い足（−）が25列';
+  addWire([11,5],[19,31],'#f2c200','11番ピン（GPIO17）がLEDのON/OFFを決めます');
+  addWire([24,31],[25,28],'#222222');
+  addPart('button',34,35).note='中央の溝をまたぐようにさします';
+  addWire([12,5],[34,31],'#1e63d6','13番ピン（GPIO27）でボタンの状態を読み取ります');
+  addWire([36,32],[37,28],'#222222');
+  addPart('dht22',42,14).note='ブレッドボードを使わず、ジャンパ線で直接つなぎます';
+  addWire([42,14],[43,29],'#d32f2f','DHT22は3.3Vで使うと、OUTの電圧も3.3Vで安全です');
+  addWire([43,14],[9,5],'#2e9e44','7番ピン（GPIO4）へ');
+  addWire([44,14],[47,28],'#222222');
+  S.code=TEMPLATES.pi[0][1];
+  const st=S; S=save.S; nid=save.nid; return st;
+}
+function samplePico(){
+  const save={S,nid}; S={title:'Pico W：ボタン・LED・土壌水分',parts:[],wires:[],order:[],code:''}; nid=1;
+  addPart('bb400',0,30);
+  addPart('pico',1,34).note='USBを左にして、中央の溝をまたぐようにさします';
+  addWire([3,33],[3,30],'#222222','38番ピン（GND）を上の−ラインへ');
+  addPart('resistor',20,43,{ohm:220}).note='片方の足をGP15（20番ピン）と同じ列にさします';
+  addPart('led',24,42,{color:'green'}).note='長い足（＋）を抵抗と同じ列に';
+  addWire([25,44],[25,47],'#222222');
+  addWire([18,42],[19,47],'#222222','18番ピン（GND）を下の−ラインへ');
+  addPart('button',26,37).note='中央の溝をまたぐようにさします';
+  addWire([20,33],[26,35],'#1e63d6','21番ピン（GP16）からスイッチへ');
+  addWire([28,35],[29,30],'#222222');
+  addPart('soil',8,18).note='ジャンパ線で直接つなぎます';
+  addWire([8,18],[10,33],'#f2c200','AOUTをGP26（ADC0・31番ピン）へ');
+  addWire([9,18],[5,33],'#d32f2f','VCCを3V3(OUT)（36番ピン）へ');
+  addWire([10,18],[13,30],'#222222');
+  S.code=TEMPLATES.pico[0][1];
+  const st=S; S=save.S; nid=save.nid; return st;
+}
+
+/* ===================== 起動 ===================== */
+function boot(){
+  buildPalette(); buildSwatches();
+  if (store.get('haisenlab.hint')==='0') $('#hint').hidden=true;
+  try{ const a=store.get('haisenlab.answer'); if(a) answer=JSON.parse(a); }catch(e){}
+  let st=null;
+  try{ const q=new URLSearchParams(location.search).get('c'); if(q) st=deserialize(fromCode(q)); }catch(e){}
+  if (!st){ try{ const s=store.get('haisenlab.v1'); if(s){ const o=JSON.parse(s); if(o&&o.p&&o.p.length) st=deserialize(o); } }catch(e){} }
+  if (!st) st=sample();
+  loadState(st); lastSnap=snap(); hist=[]; fut=[];
+  afterChange(); applyView();
+  requestAnimationFrame(fitView);
+}
+boot();
+</script>
