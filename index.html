@@ -148,10 +148,10 @@ kbd{font:600 11px var(--mono);border:1px solid var(--line);border-bottom-width:2
 .slk{font:600 7.5px var(--mono);fill:#fff}
 .bbtxt{font:500 9px var(--mono);fill:#8d897e}
 .bbsym{font:700 14px var(--mono)}
-.pilab{font:600 8.5px var(--mono)}
+.pilab{font:600 11.5px var(--mono)}
 .pilab.out.nc{fill:var(--muted)} .pilab.out.gpio{fill:var(--pin-gpio)} .pilab.out.v33{fill:var(--pin-3v3)} .pilab.out.v5{fill:var(--pin-5v)} .pilab.out.gnd{fill:var(--pin-gnd)}
 .pilab.in{fill:#eaf7ef} .pilab.in.v5{fill:#ffc2c2} .pilab.in.v33{fill:#ffd9a8} .pilab.in.gnd{fill:#b9c9c0}
-.pinno{font:700 10px var(--mono);fill:var(--muted)}
+.pinno{font:700 12px var(--mono);fill:var(--muted)}
 #cv.nolabels .pilab,#cv.nolabels .pinno{display:none}
 .tagtxt{font:700 10px var(--mono);fill:#333}
 .part{cursor:move}
@@ -245,6 +245,8 @@ kbd{font:600 11px var(--mono);border:1px solid var(--line);border-bottom-width:2
       <span class="sep"></span>
       <button class="tb" id="bRot" title="回転（R）">回転</button>
       <button class="tb" id="bDel" title="削除（Delete）">削除</button>
+      <button class="tb" id="bFront" title="選んだものを最前面へ（Ctrl+Shift+]）">最前面</button>
+      <button class="tb" id="bBack" title="選んだものを最背面へ（Ctrl+Shift+[）">最背面</button>
       <span class="sep"></span>
       <div class="swatches" id="swatches" title="新しいジャンパ線の色"><small>線の色</small></div>
       <button class="tb on" id="bLabels" title="ラズパイのピン名を表示">ピン名</button>
@@ -411,10 +413,10 @@ function piDraw(){
     const cx=q.x*P, cy=q.y*P;
     s += `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="${PIN_COL[q.role]}" stroke-width="2.6"/><rect x="${cx-3.5}" y="${cy-3.5}" width="7" height="7" fill="#e0bf55"/>`;
     const lab = q.role==='gpio' ? (q.alt && [2,3].includes(q.gpio) ? `G${q.gpio} ${q.alt}` : 'GPIO'+q.gpio) : q.name;
-    if (q.y===0) s += `<text class="pilab out ${PIN_CLS[q.role]}" transform="translate(${cx+3} -16) rotate(-90)">${lab}</text>`;
-    else s += `<text class="pilab in ${PIN_CLS[q.role]}" text-anchor="end" transform="translate(${cx+3} 38) rotate(-90)">${lab}</text>`;
+    if (q.y===0) s += `<text class="pilab out ${PIN_CLS[q.role]}" transform="translate(${cx+4} -19) rotate(-90)">${lab}</text>`;
+    else s += `<text class="pilab in ${PIN_CLS[q.role]}" text-anchor="end" transform="translate(${cx+4} 40) rotate(-90)">${lab}</text>`;
   }
-  s += `<text class="pinno" x="-22" y="24" text-anchor="end">1</text><text class="pinno" x="-22" y="4" text-anchor="end">2</text><text class="pinno" x="396" y="24">39</text><text class="pinno" x="396" y="4">40</text>`;
+  s += `<text class="pinno" x="-16" y="25" text-anchor="end">1</text><text class="pinno" x="-16" y="4" text-anchor="end">2</text><text class="pinno" x="396" y="24">39</text><text class="pinno" x="396" y="4">40</text>`;
   return s;
 }
 
@@ -882,6 +884,11 @@ function syncParts(){
     e.g.setAttribute('class',cls.join(' '));
   }
   for (const [id,e] of partEls) if(!seen.has(id)){ e.g.remove(); partEls.delete(id); }
+  // 重なり順：S.parts の並び順（あとのものほど前面）に DOM をそろえる
+  for (const ly of [$('#lyBoards'),$('#lyParts')]){
+    const want=S.parts.map(p=>partEls.get(p.id)).filter(e=>e&&e.g.parentNode===ly).map(e=>e.g);
+    if (want.some((g,i)=>ly.children[i]!==g)) for (const g of want) ly.appendChild(g);
+  }
 }
 function wirePath(a,b){
   const ax=a[0]*P, ay=a[1]*P, bx=b[0]*P, by=b[1]*P;
@@ -1123,6 +1130,8 @@ function renderInspector(){
     let h=`<h2>${esc(dispName(p))}</h2><div class="muted small">${esc(T.sub||'')}</div>`;
     for (const pr of (T.props||[])) h+=`<div class="field"><label for="pp-${pr.k}">${pr.l}</label><select id="pp-${pr.k}" data-prop="${pr.k}">${pr.opts.map(o=>`<option value="${o.v}" ${String(p.props[pr.k])===String(o.v)?'selected':''}>${o.l}</option>`).join('')}</select></div>`;
     h+=`<div class="row" style="margin:10px 0"><button class="btn" id="iRot">回転 <kbd>R</kbd></button><button class="btn danger" id="iDel">削除 <kbd>Del</kbd></button></div>`;
+    h+=`<h4>重なり順</h4><div class="row" style="margin:0 0 6px"><button class="btn" data-z="front" title="Ctrl+Shift+]">最前面へ</button><button class="btn" data-z="up" title="Ctrl+]">前面へ</button><button class="btn" data-z="down" title="Ctrl+[">背面へ</button><button class="btn" data-z="back" title="Ctrl+Shift+[">最背面へ</button></div>`;
+    h+=`<div class="muted small">${T.board?'ラズパイ・ブレッドボードどうしの重なりを入れかえます。':'部品どうしの重なりを入れかえます。'}部品やジャンパ線は、いつもボードより前に表示されます。</div>`;
     if (isMCU(p)){
       h+= p.type==='pi' ? `<h4>ピン配置（上が基板の外側）</h4><div class="muted small">ピンにマウスを重ねると名前が出ます。1番ピンは左下の角です。</div>`
         : `<h4>ピン配置</h4><div class="muted small">USBが左のとき、下の列が1〜20番、上の列が40〜21番です。ブレッドボードの中央の溝をまたいでさします。</div>`;
@@ -1137,6 +1146,7 @@ function renderInspector(){
     el.innerHTML=h;
     el.querySelectorAll('[data-prop]').forEach(s=>s.addEventListener('change',()=>{ const v=s.value; p.props[s.dataset.prop]=isNaN(+v)?v:+v; commit(); }));
     $('#iRot').onclick=rotateSel; $('#iDel').onclick=deleteSel;
+    el.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>reorderSel(b.dataset.z));
     const n=$('#iNote'); if(n){ n.oninput=()=>{p.note=n.value;}; n.onchange=()=>commit(); }
     return;
   }
@@ -1165,6 +1175,7 @@ function renderInspector(){
       <li>穴やピンからドラッグすると、ジャンパ線を引けます（GNDは黒、電源は赤に自動で色分け）</li>
       <li>ブレッドボードを動かすと、ささっている部品もいっしょに動きます</li>
       <li><kbd>R</kbd> 回転　<kbd>Del</kbd> 削除　<kbd>Ctrl</kbd>+<kbd>Z</kbd> 元に戻す</li>
+      <li><kbd>Ctrl</kbd>+<kbd>]</kbd> / <kbd>[</kbd> 前面・背面へ（<kbd>Shift</kbd>もいっしょで最前面・最背面）</li>
       <li>何もないところをドラッグで移動、ホイールで拡大・縮小</li>
     </ul>`;
   const t=$('#iTitle'); t.oninput=()=>{S.title=t.value;}; t.onchange=()=>commit();
@@ -1303,12 +1314,27 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.hidden=false; clearTi
 
 /* ===================== ツールバー・キー ===================== */
 function rotateSel(){ if(!sel||sel.kind!=='part'||stepMode) return; const p=getPart(sel.id); p.rot=(p.rot+1)%4; commit(); }
+// 重なり順の変更：同じレイヤー（ボード／部品）の中で並びを入れかえる
+function reorderSel(how){
+  if(!sel||sel.kind!=='part'||stepMode||run) return;
+  const p=getPart(sel.id); if(!p) return;
+  const isB=!!TYPES[p.type].board;
+  const same=S.parts.filter(q=>!!TYPES[q.type].board===isB);
+  const i=same.indexOf(p);
+  let j = how==='front'?same.length-1 : how==='back'?0 : how==='up'?i+1 : i-1;
+  j=Math.max(0,Math.min(same.length-1,j));
+  if (j===i){ toast(how==='front'||how==='up'?'すでに一番前です':'すでに一番うしろです'); return; }
+  same.splice(i,1); same.splice(j,0,p);
+  let k=0; S.parts=S.parts.map(q=>!!TYPES[q.type].board===isB?same[k++]:q);
+  commit();
+}
 function deleteSel(){
   if(!sel||stepMode) return;
   if (sel.kind==='part') S.parts=S.parts.filter(p=>p.id!==sel.id); else S.wires=S.wires.filter(w=>w.id!==sel.id);
   S.order=S.order.filter(id=>id!==sel.id); sel=null; commit();
 }
 $('#bUndo').onclick=undo; $('#bRedo').onclick=redo; $('#bRot').onclick=rotateSel; $('#bDel').onclick=deleteSel;
+$('#bFront').onclick=()=>reorderSel('front'); $('#bBack').onclick=()=>reorderSel('back');
 $('#bLabels').onclick=()=>{ showLabels=!showLabels; $('#bLabels').classList.toggle('on',showLabels); renderAll(); };
 $('#bZoomIn').onclick=()=>{ const r=cv.getBoundingClientRect(); zoomAt(1.25,r.width/2,r.height/2); };
 $('#bZoomOut').onclick=()=>{ const r=cv.getBoundingClientRect(); zoomAt(0.8,r.width/2,r.height/2); };
@@ -1325,6 +1351,7 @@ window.addEventListener('keydown', e=>{
   if (stepMode){ if(e.key==='ArrowRight') $('#sbNext').click(); else if(e.key==='ArrowLeft') $('#sbPrev').click(); else if(e.key==='Escape') exitSteps(); return; }
   if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
   if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey||e.metaKey)&&(e.code==='BracketRight'||e.code==='BracketLeft')){ e.preventDefault(); const up=e.code==='BracketRight'; reorderSel(e.shiftKey?(up?'front':'back'):(up?'up':'down')); return; }
   if (e.key==='r'||e.key==='R'){ rotateSel(); return; }
   if (e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); deleteSel(); return; }
   if (e.key==='Escape'){ select(null); return; }
